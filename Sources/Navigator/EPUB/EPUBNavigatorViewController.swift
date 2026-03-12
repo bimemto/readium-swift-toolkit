@@ -540,35 +540,17 @@ open class EPUBNavigatorViewController: InputObservableViewController,
         return moved
     }
 
-    /// Scrolls vertically within the current chapter, or snaps to next/previous chapter.
-    /// This implements the 2-level navigation for vertical scroll mode.
+    /// Scrolls vertically. In seamless mode, scrolls the outer container freely.
     private func goVertical(to direction: EPUBSpreadView.VerticalDirection, options: NavigatorGoOptions) async -> Bool {
         guard
             let paginationView = paginationView,
-            on(.move(direction == .down ? .right : .left))  // Reuse existing state machine
+            on(.move(direction == .down ? .right : .left))
         else {
             return false
         }
 
-        // Level 1: Try scrolling within current chapter
-        if
-            let spreadView = paginationView.currentView as? EPUBSpreadView,
-            await spreadView.scrollVertical(to: direction, options: options)
-        {
-            on(.moved)
-            return true
-        }
-
-        // Level 2: Reached bounds, snap to next/previous chapter
-        let delta = (direction == .down) ? 1 : -1
-        let location: PageLocation = (direction == .down) ? .start : .end
-
-        let moved = await paginationView.goToIndex(
-            currentSpreadIndex + delta,
-            location: location,
-            options: options
-        )
-
+        // Seamless mode: scroll the outer PaginationView scrollView by one screen step.
+        let moved = await paginationView.goSeamless(to: direction, options: options)
         on(.moved)
         return moved
     }
@@ -1312,6 +1294,15 @@ extension EPUBNavigatorViewController: EPUBSpreadViewDelegate {
 
     func spreadViewDidTerminate() {
         reloadSpreads(force: true)
+    }
+
+    func spreadViewContentHeightDidChange(_ spreadView: EPUBSpreadView) {
+        guard
+            config.verticalScrollMode,
+            let reflowableSpread = spreadView as? EPUBReflowableSpreadView,
+            let spreadIndex = spreads.firstIndex(where: { $0.contains(index: reflowableSpread.spread.leading) })
+        else { return }
+        paginationView?.updateContentHeight(at: spreadIndex, height: reflowableSpread.naturalContentHeight)
     }
 }
 

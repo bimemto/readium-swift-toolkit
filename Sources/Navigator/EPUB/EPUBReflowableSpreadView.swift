@@ -15,7 +15,24 @@ final class EPUBReflowableSpreadView: EPUBSpreadView {
     private var topConstraint: NSLayoutConstraint!
     private var bottomConstraint: NSLayoutConstraint!
 
+    /// Natural content height measured by JS ResizeObserver (seamless vertical scroll mode).
+    private(set) var naturalContentHeight: CGFloat = UIScreen.main.bounds.height * 3
+
     private static let reflowableScript = loadScript(named: "readium-reflowable")
+
+    /// JS snippet injected at documentEnd to report full content height via ResizeObserver.
+    private static let heightObserverScript = """
+        (function() {
+          function reportHeight() {
+            var h = document.documentElement.scrollHeight;
+            window.webkit.messageHandlers.contentHeightChanged.postMessage(h);
+          }
+          reportHeight();
+          if (typeof ResizeObserver !== 'undefined') {
+            new ResizeObserver(reportHeight).observe(document.documentElement);
+          }
+        })();
+        """
 
     required init(
         viewModel: EPUBNavigatorViewModel,
@@ -23,12 +40,18 @@ final class EPUBReflowableSpreadView: EPUBSpreadView {
         scripts: [WKUserScript],
         animatedLoad: Bool
     ) {
+        var scripts: [WKUserScript] = [
+            WKUserScript(source: Self.reflowableScript, injectionTime: .atDocumentStart, forMainFrameOnly: false),
+        ]
+        if viewModel.config.verticalScrollMode {
+            scripts.append(
+                WKUserScript(source: Self.heightObserverScript, injectionTime: .atDocumentEnd, forMainFrameOnly: true)
+            )
+        }
         super.init(
             viewModel: viewModel,
             spread: spread,
-            scripts: [
-                WKUserScript(source: Self.reflowableScript, injectionTime: .atDocumentStart, forMainFrameOnly: false),
-            ],
+            scripts: scripts,
             animatedLoad: animatedLoad
         )
     }
@@ -50,12 +73,13 @@ final class EPUBReflowableSpreadView: EPUBSpreadView {
         let isVerticalScrollMode = viewModel.config.verticalScrollMode
 
         if isVerticalScrollMode {
-            // Vertical scroll mode: Enable vertical scrolling, disable bounces for clean gesture pass-through
+            // Seamless vertical scroll: outer PaginationView handles all scrolling.
+            // Disable inner WebView scroll so content is fully rendered at natural height.
             scrollView.bounces = false
             scrollView.alwaysBounceVertical = false
             scrollView.alwaysBounceHorizontal = false
-            scrollView.isPagingEnabled = false  // No paging within WebView
-            scrollView.isScrollEnabled = true   // Enable vertical scrolling
+            scrollView.isPagingEnabled = false
+            scrollView.isScrollEnabled = false
         } else {
             // Horizontal pagination mode: Original behavior
             scrollView.bounces = false
@@ -420,6 +444,15 @@ final class EPUBReflowableSpreadView: EPUBSpreadView {
     override func registerJSMessages() {
         super.registerJSMessages()
         registerJSMessage(named: "progressionChanged") { [weak self] in self?.progressionDidChange($0) }
+        if viewModel.config.verticalScrollMode {
+            registerJSMessage(named: "contentHeightChanged") { [weak self] in self?.contentHeightDidChange($0) }
+        }
+    }
+
+    private func contentHeightDidChange(_ body: Any) {
+        guard let height = body as? Double, height > 0 else { return }
+        naturalContentHeight = CGFloat(height)
+        delegate?.spreadViewContentHeightDidChange(self)
     }
 
     // MARK: - WKNavigationDelegate

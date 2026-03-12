@@ -41,6 +41,13 @@ protocol EPUBSpreadViewDelegate: AnyObject {
 
     /// Called when WKWebview terminates
     func spreadViewDidTerminate()
+
+    /// Called when the natural content height of the spread changes (seamless vertical scroll mode).
+    func spreadViewContentHeightDidChange(_ spreadView: EPUBSpreadView)
+}
+
+extension EPUBSpreadViewDelegate {
+    func spreadViewContentHeightDidChange(_ spreadView: EPUBSpreadView) {}
 }
 
 class EPUBSpreadView: UIView, Loggable, PageView {

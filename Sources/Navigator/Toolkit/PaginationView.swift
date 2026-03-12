@@ -58,9 +58,60 @@ final class PaginationView: UIView, Loggable {
     var layoutMode: LayoutMode = .horizontal {
         didSet {
             if layoutMode != oldValue {
+                scrollView.isPagingEnabled = (layoutMode == .horizontal)
                 setNeedsLayout()
             }
         }
+    }
+
+    /// Measured content heights for each page in vertical seamless mode.
+    private var contentHeights: [Int: CGFloat] = [:]
+
+    /// Estimated height for chapters not yet measured (screenHeight × 3).
+    private let estimatedChapterHeight: CGFloat = UIScreen.main.bounds.height * 3
+
+    /// Updates the stored content height for the chapter at `index` and re-layouts.
+    /// Compensates contentOffset to keep the current reading position stable.
+    func updateContentHeight(at index: Int, height: CGFloat) {
+        let oldHeight = contentHeights[index] ?? estimatedChapterHeight
+        guard abs(height - oldHeight) > 1 else { return }
+        contentHeights[index] = height
+        // If the updated chapter is before the current scroll position, shift
+        // contentOffset to prevent a visible jump.
+        if index < currentIndex {
+            scrollView.contentOffset.y += (height - oldHeight)
+        }
+        setNeedsLayout()
+    }
+
+    /// Y offset for the chapter at `index` using variable stored heights.
+    private func yOffsetForChapter(_ index: Int) -> CGFloat {
+        (0 ..< index).reduce(0.0) { acc, i in
+            acc + (contentHeights[i] ?? estimatedChapterHeight)
+        }
+    }
+
+    /// Scrolls the outer scroll view by one screen step (seamless vertical mode).
+    func goSeamless(to direction: EPUBSpreadView.VerticalDirection, options: NavigatorGoOptions) async -> Bool {
+        guard layoutMode == .vertical else { return false }
+        let scrollAmount = scrollView.bounds.height * 0.8
+        let factor: CGFloat = (direction == .up) ? -1 : 1
+        let maxOffsetY = max(0, scrollView.contentSize.height - scrollView.bounds.height)
+        let newOffsetY = max(0, min(maxOffsetY, scrollView.contentOffset.y + scrollAmount * factor))
+        guard abs(newOffsetY - scrollView.contentOffset.y) > 1 else { return false }
+
+        if options.animated {
+            await withCheckedContinuation { continuation in
+                UIView.animate(withDuration: 0.3, delay: 0, options: .curveEaseInOut, animations: {
+                    self.scrollView.contentOffset = CGPoint(x: 0, y: newOffsetY)
+                }, completion: { _ in
+                    continuation.resume()
+                })
+            }
+        } else {
+            scrollView.contentOffset = CGPoint(x: 0, y: newOffsetY)
+        }
+        return true
     }
 
     /// Total number of page views to be paginated.
@@ -128,7 +179,7 @@ final class PaginationView: UIView, Loggable {
         scrollView.delegate = self
         scrollView.frame = bounds
         scrollView.autoresizingMask = [.flexibleHeight, .flexibleWidth]
-        scrollView.isPagingEnabled = true
+        scrollView.isPagingEnabled = true  // Default for horizontal; overridden when layoutMode is set to .vertical
         scrollView.bounces = false
         scrollView.showsHorizontalScrollIndicator = false
         scrollView.isScrollEnabled = isScrollEnabled
@@ -168,13 +219,16 @@ final class PaginationView: UIView, Loggable {
             scrollView.contentOffset.x = xOffsetForIndex(currentIndex)
 
         case .vertical:
-            scrollView.contentSize = CGSize(width: size.width, height: size.height * CGFloat(pageCount))
+            let totalHeight = (0 ..< pageCount).reduce(0.0) { acc, i in
+                acc + (contentHeights[i] ?? estimatedChapterHeight)
+            }
+            scrollView.contentSize = CGSize(width: size.width, height: totalHeight)
 
             for (index, view) in loadedViews {
-                view.frame = CGRect(origin: CGPoint(x: 0, y: yOffsetForIndex(index)), size: size)
+                let h = contentHeights[index] ?? estimatedChapterHeight
+                view.frame = CGRect(x: 0, y: yOffsetForChapter(index), width: size.width, height: h)
             }
-
-            scrollView.contentOffset.y = yOffsetForIndex(currentIndex)
+            // Do NOT reset contentOffset here — user is scrolling freely.
         }
     }
 
@@ -355,6 +409,23 @@ final class PaginationView: UIView, Loggable {
             return false
         }
 
+        if layoutMode == .vertical {
+            setCurrentIndex(index, location: location)
+            let targetY = yOffsetForChapter(index)
+            if options.animated {
+                await withCheckedContinuation { continuation in
+                    UIView.animate(withDuration: 0.4, delay: 0, options: .curveEaseInOut, animations: {
+                        self.scrollView.contentOffset = CGPoint(x: 0, y: targetY)
+                    }, completion: { _ in
+                        continuation.resume()
+                    })
+                }
+            } else {
+                scrollView.contentOffset = CGPoint(x: 0, y: targetY)
+            }
+            return true
+        }
+
         if currentIndex == index {
             await scrollToView(at: index, location: location)
         } else {
@@ -415,37 +486,54 @@ extension PaginationView: UIScrollViewDelegate {
     /// scrollable content of the resources would be skipped.
     /// Note: using this approach might provide a better experience:
     /// https://oleb.net/blog/2014/05/scrollviews-inside-scrollviews/
+    /// In seamless vertical mode this lock is not applied — the scroll flows freely.
 
     func scrollViewWillEndDragging(_ scrollView: UIScrollView, withVelocity velocity: CGPoint, targetContentOffset: UnsafeMutablePointer<CGPoint>) {
+        guard layoutMode != .vertical else { return }
         scrollView.isScrollEnabled = false
     }
 
     func scrollViewDidEndScrollingAnimation(_ scrollView: UIScrollView) {
+        guard layoutMode != .vertical else { return }
         scrollView.isScrollEnabled = isScrollEnabled
     }
 
     func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
+        guard layoutMode != .vertical else { return }
         if !decelerate {
             scrollView.isScrollEnabled = isScrollEnabled
         }
     }
 
     public func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
+        guard layoutMode != .vertical else { return }
         scrollView.isScrollEnabled = isScrollEnabled
 
-        let newIndex: Int
-        switch layoutMode {
-        case .horizontal:
-            let currentOffset = (readingProgression == .rtl)
-                ? scrollView.contentSize.width - (scrollView.contentOffset.x + scrollView.frame.width)
-                : scrollView.contentOffset.x
+        let currentOffset = (readingProgression == .rtl)
+            ? scrollView.contentSize.width - (scrollView.contentOffset.x + scrollView.frame.width)
+            : scrollView.contentOffset.x
 
-            newIndex = Int(round(currentOffset / scrollView.frame.width))
+        let newIndex = Int(round(currentOffset / scrollView.frame.width))
+        setCurrentIndex(newIndex)
+    }
 
-        case .vertical:
-            newIndex = Int(round(scrollView.contentOffset.y / scrollView.frame.height))
+    /// Tracks the current chapter index as the user scrolls freely in vertical seamless mode.
+    func scrollViewDidScroll(_ scrollView: UIScrollView) {
+        guard layoutMode == .vertical else { return }
+
+        let midY = scrollView.contentOffset.y + scrollView.bounds.height / 2
+        var accumulated: CGFloat = 0
+        var newIndex = max(0, pageCount - 1)
+        for i in 0 ..< pageCount {
+            accumulated += contentHeights[i] ?? estimatedChapterHeight
+            if midY < accumulated {
+                newIndex = i
+                break
+            }
         }
 
-        setCurrentIndex(newIndex)
+        if newIndex != currentIndex {
+            setCurrentIndex(newIndex)
+        }
     }
 }
