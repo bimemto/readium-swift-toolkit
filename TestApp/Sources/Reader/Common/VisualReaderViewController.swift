@@ -15,6 +15,9 @@ import UIKit
 class VisualReaderViewController<N: UIViewController & Navigator>: ReaderViewController<N>, VisualNavigatorDelegate {
     private lazy var positionLabel = UILabel()
 
+    /// Slide-mode boundary swipe detection.
+    private var boundaryPanHandler: BoundaryPanHandler?
+
     private let ttsViewModel: TTSViewModel?
     private let ttsControlsViewController: UIHostingController<TTSControls>?
     private var positionCount: Int?
@@ -76,14 +79,50 @@ class VisualReaderViewController<N: UIViewController & Navigator>: ReaderViewCon
 //            return false
 //        })
 
-        /// This adapter will automatically turn pages when the user taps the
-        /// screen edges or press arrow keys.
-        ///
-        /// Bind it to the navigator before adding your own observers to prevent
-        /// triggering your actions when turning pages.
-        DirectionalNavigationAdapter(
-            pointerPolicy: .init(types: [.mouse, .touch])
-        ).bind(to: navigator)
+        // Slide-mode page turns: edge-tap + boundary-aware swipe.
+        if let epubNav = navigator as? EPUBNavigatorViewController {
+            // Edge taps for page turns.
+            navigator.addObserver(.tap { [weak epubNav] event in
+                guard let nav = epubNav else { return false }
+                let bounds = nav.view.bounds
+                let edgeSize = bounds.width * 0.3
+
+                let forward: Bool?
+                if event.location.x >= bounds.width - edgeSize {
+                    forward = true
+                } else if event.location.x <= edgeSize {
+                    forward = false
+                } else {
+                    forward = nil
+                }
+
+                guard let forward else { return false }
+
+                if nav.tryQuickPageTurn(forward: forward) {
+                    return true
+                }
+                Task { @MainActor in
+                    _ = await nav.quickChapterTransition(forward: forward)
+                }
+                return true
+            })
+
+            // Disable PaginationView's scroll so it doesn't fight with
+            // WKWebView's CSS column scroll at chapter boundaries.
+            epubNav.isPaginationScrollEnabled = false
+
+            // Pan gesture: detects swipe at chapter boundary → auto chapter transition.
+            // WKWebView handles within-chapter CSS column scrolling natively.
+            // This only fires quickChapterTransition when the spread was already
+            // at the edge before the swipe started.
+            let handler = BoundaryPanHandler(navigator: epubNav)
+            handler.install(on: epubNav.view)
+            boundaryPanHandler = handler
+        } else {
+            DirectionalNavigationAdapter(
+                pointerPolicy: .init(types: [.mouse, .touch])
+            ).bind(to: navigator)
+        }
 
         // Clear the current search highlight on tap.
         navigator.addObserver(.activate { [weak self] _ in
@@ -421,5 +460,68 @@ extension HTMLDecorationTemplate {
                 }
             """
         )
+    }
+}
+
+// MARK: - Boundary-aware pan gesture handler
+
+/// Detects swipe gestures at chapter boundaries and triggers chapter transitions.
+/// Non-generic so it can conform to @objc protocols.
+final class BoundaryPanHandler: NSObject, UIGestureRecognizerDelegate {
+    private weak var navigator: EPUBNavigatorViewController?
+    private var recognizer: UIPanGestureRecognizer?
+    private var wasAtForwardEdge = false
+    private var wasAtBackwardEdge = false
+
+    init(navigator: EPUBNavigatorViewController) {
+        self.navigator = navigator
+    }
+
+    func install(on view: UIView) {
+        let pan = UIPanGestureRecognizer(target: self, action: #selector(handlePan(_:)))
+        pan.maximumNumberOfTouches = 1
+        pan.delegate = self
+        view.addGestureRecognizer(pan)
+        recognizer = pan
+    }
+
+    @objc private func handlePan(_ recognizer: UIPanGestureRecognizer) {
+        guard let nav = navigator else { return }
+
+        switch recognizer.state {
+        case .began:
+            wasAtForwardEdge = nav.isAtSpreadEdge(forward: true)
+            wasAtBackwardEdge = nav.isAtSpreadEdge(forward: false)
+
+        case .ended:
+            let velocity = recognizer.velocity(in: recognizer.view)
+            let translation = recognizer.translation(in: recognizer.view)
+
+            let isHorizontalDominant = abs(translation.x) > abs(translation.y) * 1.5
+            let hasEnoughDistance = abs(translation.x) > 50
+            let hasEnoughVelocity = abs(velocity.x) > 300
+
+            guard isHorizontalDominant && hasEnoughDistance && hasEnoughVelocity else { return }
+
+            let forward = translation.x < 0
+
+            if forward && wasAtForwardEdge {
+                Task { @MainActor in
+                    _ = await nav.quickChapterTransition(forward: true)
+                }
+            } else if !forward && wasAtBackwardEdge {
+                Task { @MainActor in
+                    _ = await nav.quickChapterTransition(forward: false)
+                }
+            }
+
+        default:
+            break
+        }
+    }
+
+    // Allow simultaneous recognition with WKWebView's scroll gesture.
+    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+        true
     }
 }

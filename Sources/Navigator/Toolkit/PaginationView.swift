@@ -83,6 +83,9 @@ final class PaginationView: UIView, Loggable {
     /// Queue of page index to be loaded next.
     private var loadingIndexQueue: [(index: Int, location: PageLocation)] = []
 
+    /// Guards `layoutSubviews` from resetting contentOffset during a slide animation.
+    private var isSliding = false
+
     /// Returns whether the page views are loaded.
     var isEmpty: Bool {
         loadedViews.isEmpty
@@ -165,7 +168,9 @@ final class PaginationView: UIView, Loggable {
                 view.frame = CGRect(origin: CGPoint(x: xOffsetForIndex(index), y: 0), size: size)
             }
 
-            scrollView.contentOffset.x = xOffsetForIndex(currentIndex)
+            if !isSliding {
+                scrollView.contentOffset.x = xOffsetForIndex(currentIndex)
+            }
 
         case .vertical:
             scrollView.contentSize = CGSize(width: size.width, height: size.height * CGFloat(pageCount))
@@ -174,7 +179,9 @@ final class PaginationView: UIView, Loggable {
                 view.frame = CGRect(origin: CGPoint(x: 0, y: yOffsetForIndex(index)), size: size)
             }
 
-            scrollView.contentOffset.y = yOffsetForIndex(currentIndex)
+            if !isSliding {
+                scrollView.contentOffset.y = yOffsetForIndex(currentIndex)
+            }
         }
     }
 
@@ -359,6 +366,40 @@ final class PaginationView: UIView, Loggable {
             await scrollToView(at: index, location: location)
         } else {
             await fadeToView(at: index, location: location, animated: options.animated)
+        }
+        return true
+    }
+
+    /// Slides the pagination view to the page at the given index with a
+    /// horizontal/vertical translate animation (like a native swipe).
+    func slideToIndex(_ index: Int, location: PageLocation) async -> Bool {
+        guard 0 ..< pageCount ~= index, currentIndex != index else { return false }
+
+        let oldOffset = scrollView.contentOffset
+
+        // Load the target spread and lay it out, but keep the scroll
+        // position at the old chapter so the user sees a smooth slide.
+        isSliding = true
+        scrollView.isScrollEnabled = isScrollEnabled
+        setCurrentIndex(index, location: location)
+        layoutIfNeeded()
+        scrollView.contentOffset = oldOffset
+        isSliding = false
+
+        let newOffset: CGPoint
+        switch layoutMode {
+        case .horizontal:
+            newOffset = CGPoint(x: xOffsetForIndex(index), y: oldOffset.y)
+        case .vertical:
+            newOffset = CGPoint(x: oldOffset.x, y: yOffsetForIndex(index))
+        }
+
+        await withCheckedContinuation { continuation in
+            UIView.animate(withDuration: 0.25, delay: 0, options: .curveEaseOut, animations: {
+                self.scrollView.contentOffset = newOffset
+            }) { _ in
+                continuation.resume()
+            }
         }
         return true
     }

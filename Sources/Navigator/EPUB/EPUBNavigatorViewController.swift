@@ -706,8 +706,17 @@ open class EPUBNavigatorViewController: InputObservableViewController,
 
     // MARK: - Navigator
 
+    /// When set to `false`, disables the pagination view's scroll gesture
+    /// so that chapter transitions are handled externally (e.g. via
+    /// `tryQuickPageTurn` / `quickChapterTransition`).
+    public var isPaginationScrollEnabled: Bool = true {
+        didSet {
+            paginationView?.isScrollEnabled = isPaginationViewScrollingEnabled
+        }
+    }
+
     private var isPaginationViewScrollingEnabled: Bool {
-        !(config.disablePageTurnsWhileScrolling && settings.scroll)
+        isPaginationScrollEnabled && !(config.disablePageTurnsWhileScrolling && settings.scroll)
     }
 
     public var presentation: VisualNavigatorPresentation {
@@ -926,9 +935,10 @@ open class EPUBNavigatorViewController: InputObservableViewController,
         return true
     }
 
-    /// Performs a chapter transition without fade animation.
-    /// The new spread's `showSpread()` handles its own reveal.
-    public func quickChapterTransition(forward: Bool) async -> Bool {
+    /// Performs a chapter transition with an optional slide animation.
+    /// When `animated` is `true`, the view slides to the new chapter like
+    /// a native swipe. When `false`, the transition is instant.
+    public func quickChapterTransition(forward: Bool, animated: Bool = true) async -> Bool {
         let direction: EPUBSpreadView.Direction = {
             switch (forward, viewModel.readingProgression) {
             case (true, .ltr), (false, .rtl): return .right
@@ -965,11 +975,43 @@ open class EPUBNavigatorViewController: InputObservableViewController,
             return false
         }
 
-        // Skip fade — go directly to the new chapter.
-        await paginationView.goToIndex(newIndex, location: location, options: .init(animated: false))
+        if animated {
+            // Slide to the new chapter like a native swipe.
+            _ = await paginationView.slideToIndex(newIndex, location: location)
+        } else {
+            // Instant transition.
+            await paginationView.goToIndex(newIndex, location: location, options: .init(animated: false))
+        }
 
         on(.moved)
         return true
+    }
+
+    /// Returns `true` when the current spread is at its content edge in the
+    /// given direction, meaning a chapter transition is needed to continue.
+    /// This does NOT scroll — it only checks the boundary.
+    public func isAtSpreadEdge(forward: Bool) -> Bool {
+        guard
+            let spreadView = paginationView?.currentView as? EPUBSpreadView,
+            !viewModel.scroll
+        else {
+            return false
+        }
+
+        let direction: EPUBSpreadView.Direction = {
+            switch (forward, viewModel.readingProgression) {
+            case (true, .ltr), (false, .rtl): return .right
+            case (false, .ltr), (true, .rtl): return .left
+            }
+        }()
+
+        let sv = spreadView.scrollView
+        let offsetX = sv.bounds.width * (direction == .left ? -1.0 : 1.0)
+        var newOffset = sv.contentOffset
+        newOffset.x += offsetX
+        newOffset.x = round(newOffset.x / offsetX) * offsetX
+
+        return !(0 ..< sv.contentSize.width ~= newOffset.x)
     }
 
     // MARK: - SelectableNavigator
