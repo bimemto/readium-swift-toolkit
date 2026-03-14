@@ -65,7 +65,7 @@ class EPUBViewController: VisualReaderViewController<EPUBNavigatorViewController
                         title: "Highlight",
                         action: #selector(highlightSelection)
                     )),
-                verticalScrollMode: true, decorationTemplates: templates,
+                decorationTemplates: templates,
                 fontFamilyDeclarations: [
                     CSSFontFamilyDeclaration(
                         fontFamily: .literata,
@@ -411,8 +411,4 @@ extension EPUBViewController: EPUBNavigatorDelegate {
     }
 }
 
-extension EPUBViewController: UIGestureRecognizerDelegate {
-    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
-        true
-    }
-}
+// UIGestureRecognizerDelegate conformance is in VisualReaderViewController.
