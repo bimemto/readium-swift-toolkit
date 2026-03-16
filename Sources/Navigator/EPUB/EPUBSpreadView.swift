@@ -464,6 +464,9 @@ class EPUBSpreadView: UIView, Loggable, PageView {
 
     // MARK: - Location and progression.
 
+    /// Number of visual pages reported by the WebView (paginated mode only).
+    var chapterPageCount: Int?
+
     /// Current progression in the resource with given href.
     func progression(in index: ReadingOrder.Index) -> ClosedRange<Double> {
         // To be overridden in subclasses if the resource supports a progression.
