@@ -193,7 +193,7 @@ final class EPUBReflowableSpreadView: EPUBSpreadView {
             if (isScroll) {
                 var vh = window.innerHeight;
                 var sh = document.scrollingElement.scrollHeight;
-                return vh > 0 ? Math.max(1, Math.round(sh / vh)) : 1;
+                return vh > 0 ? Math.max(1, Math.ceil(sh / vh - 0.1)) : 1;
             } else {
                 var vw = window.innerWidth;
                 var sw = document.scrollingElement.scrollWidth;
