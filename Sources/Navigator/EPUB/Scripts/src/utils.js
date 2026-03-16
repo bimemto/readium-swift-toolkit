@@ -114,6 +114,7 @@ function onScroll() {
     lastKnownProgressions = {
       first: scrollX / totalContentWidth,
       last: (scrollX + viewportWidth) / totalContentWidth,
+      pageCount: viewportWidth > 0 ? Math.round(totalContentWidth / viewportWidth) : 1,
     };
   }
 

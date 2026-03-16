@@ -393,6 +393,10 @@ final class EPUBReflowableSpreadView: EPUBSpreadView {
         firstProgression = min(max(firstProgression, 0.0), 1.0)
         lastProgression = min(max(lastProgression, 0.0), 1.0)
 
+        if let pc = body["pageCount"] as? Int, pc > 0 {
+            chapterPageCount = pc
+        }
+
         if previousProgression == nil {
             previousProgression = progression
         }
