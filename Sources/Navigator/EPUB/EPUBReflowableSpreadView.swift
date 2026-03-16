@@ -424,7 +424,16 @@ final class EPUBReflowableSpreadView: EPUBSpreadView {
         lastProgression = min(max(lastProgression, 0.0), 1.0)
 
         if let pc = body["pageCount"] as? Int, pc > 0 {
-            chapterPageCount = pc
+            // Only update if not already set or if the change is significant (>1).
+            // Ignoring ±1 fluctuations prevents scrollHeight instability at
+            // scroll boundaries from causing the page count to jump.
+            if let existing = chapterPageCount {
+                if abs(existing - pc) > 1 {
+                    chapterPageCount = pc
+                }
+            } else {
+                chapterPageCount = pc
+            }
         }
 
         if previousProgression == nil {
