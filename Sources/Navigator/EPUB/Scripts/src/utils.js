@@ -102,7 +102,7 @@ function onScroll() {
     lastKnownProgressions = {
       first: scrollY / totalContentHeight,
       last: (scrollY + viewportHeight) / totalContentHeight,
-      pageCount: viewportHeight > 0 ? Math.max(1, Math.round(totalContentHeight / viewportHeight)) : 1,
+      pageCount: viewportHeight > 0 ? Math.max(1, Math.ceil(totalContentHeight / viewportHeight - 0.1)) : 1,
     };
   } else {
     let scrollX = window.scrollX;
