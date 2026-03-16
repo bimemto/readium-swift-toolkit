@@ -171,10 +171,40 @@ final class EPUBReflowableSpreadView: EPUBSpreadView {
         let location = pendingLocation
         await go(to: pendingLocation)
 
+        // Fetch page count eagerly so the first updateCurrentLocation() after
+        // chapter load already includes pageCount (the JS progressionChanged
+        // message arrives asynchronously and may not have been processed yet).
+        await fetchInitialPageCount()
+
         // The rendering is sometimes very slow. So in case we don't show the first page of the resource, we add
         // a generous delay before showing the spread again.
         let delayed = !location.isStart
         try? await Task.sleep(seconds: delayed ? 0.3 : 0)
+    }
+
+    /// Queries the WebView for the current page count and stores it in
+    /// `chapterPageCount` so it's available before the first location update.
+    private func fetchInitialPageCount() async {
+        // Let JS detect the layout mode; mirrors the logic in onScroll().
+        let script = """
+        (function(){
+            var style = document.documentElement.style;
+            var isScroll = style.getPropertyValue('--USER__view').trim() === 'readium-scroll-on';
+            if (isScroll) {
+                var vh = window.innerHeight;
+                var sh = document.scrollingElement.scrollHeight;
+                return vh > 0 ? Math.max(1, Math.ceil(sh / vh - 0.1)) : 1;
+            } else {
+                var vw = window.innerWidth;
+                var sw = document.scrollingElement.scrollWidth;
+                return vw > 0 ? Math.max(1, Math.round(sw / vw)) : 1;
+            }
+        })()
+        """
+        let result = await evaluateScript(script)
+        if case let .success(value) = result, let pc = value as? Int, pc > 0 {
+            chapterPageCount = pc
+        }
     }
 
     override func go(to direction: EPUBSpreadView.Direction, options: NavigatorGoOptions) async -> Bool {
@@ -392,6 +422,19 @@ final class EPUBReflowableSpreadView: EPUBSpreadView {
         precondition(firstProgression <= lastProgression)
         firstProgression = min(max(firstProgression, 0.0), 1.0)
         lastProgression = min(max(lastProgression, 0.0), 1.0)
+
+        if let pc = body["pageCount"] as? Int, pc > 0 {
+            // Only update if not already set or if the change is significant (>1).
+            // Ignoring ±1 fluctuations prevents scrollHeight instability at
+            // scroll boundaries from causing the page count to jump.
+            if let existing = chapterPageCount {
+                if abs(existing - pc) > 1 {
+                    chapterPageCount = pc
+                }
+            } else {
+                chapterPageCount = pc
+            }
+        }
 
         if previousProgression == nil {
             previousProgression = progression

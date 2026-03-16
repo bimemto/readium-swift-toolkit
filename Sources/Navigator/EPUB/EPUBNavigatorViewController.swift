@@ -786,7 +786,14 @@ open class EPUBNavigatorViewController: InputObservableViewController,
 
             location = await positionsOfFirstResource[firstPositionIndex].copy(
                 title: tableOfContentsTitleByHref[link.url()],
-                locations: { $0.progression = firstProgressionInFirstResource }
+                locations: {
+                    $0.progression = firstProgressionInFirstResource
+                    if let pageCount = spreadView.chapterPageCount {
+                        var others = $0.otherLocations
+                        others["pageCount"] = pageCount
+                        $0.otherLocations = others
+                    }
+                }
             )
 
             if
@@ -798,7 +805,14 @@ open class EPUBNavigatorViewController: InputObservableViewController,
 
         } else {
             location = await publication.locate(link)?.copy(
-                locations: { $0.progression = firstProgressionInFirstResource }
+                locations: {
+                    $0.progression = firstProgressionInFirstResource
+                    if let pageCount = spreadView.chapterPageCount {
+                        var others = $0.otherLocations
+                        others["pageCount"] = pageCount
+                        $0.otherLocations = others
+                    }
+                }
             )
         }
 
