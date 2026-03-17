@@ -103,6 +103,9 @@ final class EPUBReflowableSpreadView: EPUBSpreadView {
         // Disables paginated mode if scroll is on.
         scrollView.isPagingEnabled = !viewModel.scroll
 
+        // Reset page count so it gets recalculated after the layout change.
+        chapterPageCount = nil
+
         updateContentInset()
     }
 
@@ -423,17 +426,10 @@ final class EPUBReflowableSpreadView: EPUBSpreadView {
         firstProgression = min(max(firstProgression, 0.0), 1.0)
         lastProgression = min(max(lastProgression, 0.0), 1.0)
 
-        if let pc = body["pageCount"] as? Int, pc > 0 {
-            // Only update if not already set or if the change is significant (>1).
-            // Ignoring ±1 fluctuations prevents scrollHeight instability at
-            // scroll boundaries from causing the page count to jump.
-            if let existing = chapterPageCount {
-                if abs(existing - pc) > 1 {
-                    chapterPageCount = pc
-                }
-            } else {
-                chapterPageCount = pc
-            }
+        if let pc = body["pageCount"] as? Int, pc > 0, chapterPageCount == nil {
+            // Only set when nil (initial load or after settings reset).
+            // This prevents late image loads from causing page count jumps.
+            chapterPageCount = pc
         }
 
         if previousProgression == nil {
