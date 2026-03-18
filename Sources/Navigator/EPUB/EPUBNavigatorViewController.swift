@@ -791,6 +791,7 @@ open class EPUBNavigatorViewController: InputObservableViewController,
                     if let pageCount = spreadView.chapterPageCount {
                         var others = $0.otherLocations
                         others["pageCount"] = pageCount
+                        others["pageEndProgression"] = lastProgressionInLastResource
                         $0.otherLocations = others
                     }
                 }
@@ -810,6 +811,7 @@ open class EPUBNavigatorViewController: InputObservableViewController,
                     if let pageCount = spreadView.chapterPageCount {
                         var others = $0.otherLocations
                         others["pageCount"] = pageCount
+                        others["pageEndProgression"] = lastProgressionInLastResource
                         $0.otherLocations = others
                     }
                 }
