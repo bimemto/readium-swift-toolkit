@@ -103,7 +103,6 @@ final class EPUBFixedSpreadView: EPUBSpreadView {
         guard isWrapperLoaded else {
             return
         }
-        resetChapterErrorStateBeforeLoad()
         // We call this directly on the web view on purpose, because this needs
         // to be executed before the spread is loaded.
         let spreadJSON = spread.jsonString(
