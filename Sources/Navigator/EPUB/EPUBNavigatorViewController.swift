@@ -494,6 +494,34 @@ open class EPUBNavigatorViewController: InputObservableViewController,
         return state.transition(event)
     }
 
+    /// Mapping between reading order base hrefs and their TOC fragment IDs.
+    /// Used to inject JS that tracks which sub-chapter is currently visible.
+    private var tocFragmentsByHref: [String: [String]] {
+        get async { await tocFragmentsByHrefTask.value }
+    }
+
+    private lazy var tocFragmentsByHrefTask: Task<[String: [String]], Never> = Task {
+        guard let toc = try? await publication.tableOfContents().get() else {
+            return [:]
+        }
+        var map = [String: [String]]()
+        func collect(_ links: [Link]) {
+            for link in links {
+                let full = link.url().string
+                if full.contains("#") {
+                    let base = full.components(separatedBy: "#").first ?? full
+                    let frag = full.components(separatedBy: "#").last ?? ""
+                    if !frag.isEmpty {
+                        map[base, default: []].append(frag)
+                    }
+                }
+                collect(link.children)
+            }
+        }
+        collect(toc)
+        return map
+    }
+
     /// Mapping between reading order hrefs and the table of contents title.
     private var tableOfContentsTitleByHref: [AnyURL: String] {
         get async { await tableOfContentsTitleByHrefTask.value }
@@ -766,7 +794,7 @@ open class EPUBNavigatorViewController: InputObservableViewController,
         let lastProgressionInLastResource = min(max(progressionOfLastResource.upperBound, 0.0), 1.0)
 
         let link = readingOrder[firstIndex]
-        let location: Locator?
+        var location: Locator?
 
         if
             // The positions are not always available, for example a Readium
@@ -816,6 +844,23 @@ open class EPUBNavigatorViewController: InputObservableViewController,
                     }
                 }
             )
+        }
+
+        // Read the current TOC fragment by calling the injected function on-demand
+        // (works in both paginated and scroll modes)
+        if var loc = location {
+            let fragmentResult = await spreadView.evaluateScript("(typeof window.__getTocFragment === 'function') ? window.__getTocFragment() : ''")
+            if case .success(let value) = fragmentResult, let fragment = value as? String, !fragment.isEmpty {
+                let baseHref = link.url().string
+                let hrefWithFragment = "\(baseHref)#\(fragment)"
+                if let newUrl = AnyURL(string: hrefWithFragment) {
+                    // Also resolve the sub-chapter title from TOC
+                    let titles = await tableOfContentsTitleByHref
+                    let subTitle = titles[newUrl] ?? loc.title
+                    loc = loc.copy(href: newUrl, title: subTitle)
+                    location = loc
+                }
+            }
         }
 
         return (location, viewport)
@@ -1322,6 +1367,36 @@ extension EPUBNavigatorViewController: EPUBSpreadViewDelegate {
         }
 
         await spreadView.evaluateScript("(function() {\n\(script)\n})();")
+
+        // Inject TOC fragment finder function for sub-chapter detection
+        // Uses on-demand evaluation (works in both paginated and scroll modes)
+        let spreadLinks = spreadView.spread.readingOrderIndices
+            .compactMap { readingOrder.getOrNil($0) }
+        for spreadLink in spreadLinks {
+            let baseHref = spreadLink.url().string.components(separatedBy: "#").first ?? spreadLink.url().string
+            let fragments = await tocFragmentsByHref[baseHref] ?? []
+            if !fragments.isEmpty {
+                let fragsJson = fragments.map { "\"\($0.replacingOccurrences(of: "\"", with: "\\\""))\"" }.joined(separator: ",")
+                let trackerScript = """
+                (function() {
+                    var frags = [\(fragsJson)];
+                    window.__getTocFragment = function() {
+                        var best = '';
+                        var vw = window.innerWidth;
+                        var vh = window.innerHeight;
+                        for (var i = 0; i < frags.length; i++) {
+                            var el = document.getElementById(frags[i]);
+                            if (!el) continue;
+                            var r = el.getBoundingClientRect();
+                            if (r.top < vh && r.left < vw) best = frags[i];
+                        }
+                        return best;
+                    };
+                })();
+                """
+                await spreadView.evaluateScript(trackerScript)
+            }
+        }
     }
 
     func spreadView(_ spreadView: EPUBSpreadView, didReceive event: PointerEvent) {
