@@ -794,7 +794,7 @@ open class EPUBNavigatorViewController: InputObservableViewController,
         let lastProgressionInLastResource = min(max(progressionOfLastResource.upperBound, 0.0), 1.0)
 
         let link = readingOrder[firstIndex]
-        let location: Locator?
+        var location: Locator?
 
         if
             // The positions are not always available, for example a Readium
