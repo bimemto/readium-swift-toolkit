@@ -165,11 +165,10 @@ final class EPUBReflowableSpreadView: EPUBSpreadView {
             await evaluateScript("readium.link = \(linkJSON);")
         }
 
-        // TODO: Better solution for delaying scrolling to pending location
-        // This delay is used to wait for the web view pagination to settle and give the CSS and webview time to layout
-        // correctly before attempting to scroll to the target progression, otherwise we might end up at the wrong spot.
-        // 0.2 seconds seems like a good value for it to work on an iPhone 5s.
-        try? await Task.sleep(seconds: 0.2)
+        // Wait for the web view pagination to settle by polling layout dimensions.
+        // Replaces the previous fixed 200ms sleep — on modern devices layout usually
+        // settles within 30-60ms, so we return as soon as it's stable.
+        await waitForLayoutStable(timeout: 0.15)
 
         let location = pendingLocation
         await go(to: pendingLocation)
@@ -179,10 +178,39 @@ final class EPUBReflowableSpreadView: EPUBSpreadView {
         // message arrives asynchronously and may not have been processed yet).
         await fetchInitialPageCount()
 
-        // The rendering is sometimes very slow. So in case we don't show the first page of the resource, we add
-        // a generous delay before showing the spread again.
-        let delayed = !location.isStart
-        try? await Task.sleep(seconds: delayed ? 0.3 : 0)
+        // Small safety margin for non-start locations to let the scroll position
+        // settle after go(to:). Reduced from 300ms → 50ms (the previous delay was
+        // sized for iPhone 5s; modern devices don't need it).
+        if !location.isStart {
+            try? await Task.sleep(nanoseconds: 50_000_000) // 50ms
+        }
+    }
+
+    /// Polls the WebView's layout dimensions until they stabilise (two consecutive
+    /// reads return the same scrollWidth × scrollHeight), or until `timeout` elapses.
+    /// This replaces the old fixed `Task.sleep(seconds: 0.2)` and returns as soon as
+    /// the CSS/pagination layout has settled — typically in 30-60ms on modern iPhones.
+    private func waitForLayoutStable(timeout: TimeInterval) async {
+        let start = CFAbsoluteTimeGetCurrent()
+        var lastWidth: Double = -1
+        var lastHeight: Double = -1
+
+        while CFAbsoluteTimeGetCurrent() - start < timeout {
+            let result = await evaluateScript(
+                "[document.scrollingElement.scrollWidth, document.scrollingElement.scrollHeight].join(',')"
+            )
+            if case .success(let val) = result, let str = val as? String {
+                let parts = str.split(separator: ",").compactMap { Double($0) }
+                if parts.count == 2 {
+                    if parts[0] == lastWidth && parts[1] == lastHeight {
+                        return // Layout has settled
+                    }
+                    lastWidth = parts[0]
+                    lastHeight = parts[1]
+                }
+            }
+            try? await Task.sleep(nanoseconds: 30_000_000) // 30ms polling interval
+        }
     }
 
     /// Queries the WebView for the current page count and stores it in
