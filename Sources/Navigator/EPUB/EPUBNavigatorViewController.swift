@@ -1586,7 +1586,7 @@ extension EPUBNavigatorViewController {
     /// The WebView starts loading immediately; when the PaginationView later
     /// requests this spread via its delegate, we return the already-loaded view
     /// instead of creating a new one — making the chapter jump near-instant.
-    func preloadSpread(forHref href: String) {
+    public func preloadSpread(forHref href: String) {
         guard let anyURL = AnyURL(string: href),
               let roIndex = readingOrder.firstIndexWithHREF(anyURL),
               let spreadIndex = spreads.firstIndexWithReadingOrderIndex(roIndex)
@@ -1618,7 +1618,7 @@ extension EPUBNavigatorViewController {
     }
 
     /// Discards any preloaded spread, freeing memory.
-    func clearPreloadedSpread() {
+    public func clearPreloadedSpread() {
         preloadedSpreadView?.clear()
         preloadedSpreadView = nil
         preloadedSpreadIndex = nil
