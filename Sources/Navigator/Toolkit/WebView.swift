@@ -10,12 +10,19 @@ import WebKit
 /// A custom web view which:
 ///  - Forwards copy: menu action to an EditingActionsController.
 final class WebView: WKWebView {
+    /// Shared process pool across all EPUB spread WebViews.
+    /// Sharing a single WKProcessPool lets all WebViews reuse the same Web Content
+    /// process, which avoids the 30-50ms overhead of spawning a new process for
+    /// each spread and significantly reduces memory usage.
+    private static let sharedProcessPool = WKProcessPool()
+
     private let editingActions: EditingActionsController
 
     init(editingActions: EditingActionsController) {
         self.editingActions = editingActions
 
         let config = WKWebViewConfiguration()
+        config.processPool = Self.sharedProcessPool
         config.mediaTypesRequiringUserActionForPlayback = .all
 
         // Disable the Apple Intelligence Writing tools in the web views.

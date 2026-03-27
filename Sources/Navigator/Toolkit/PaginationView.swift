@@ -405,20 +405,7 @@ final class PaginationView: UIView, Loggable {
     }
 
     private func fadeToView(at index: Int, location: PageLocation, animated: Bool) async {
-        if animated {
-            await withCheckedContinuation { continuation in
-                UIView.animate(withDuration: 0.15, animations: {
-                    self.alpha = 0
-                }) { _ in
-                    continuation.resume()
-                }
-            }
-        }
-
         await scrollToView(at: index, location: location)
-
-        // Restore alpha. The new spread's scrollView.alpha is 0 until
-        // showSpread() fires, so setting alpha back to 1 is visually invisible.
         self.alpha = 1
     }
 

@@ -317,6 +317,7 @@ class EPUBSpreadView: UIView, Loggable, PageView {
     func showSpread() {
         activityIndicatorView?.stopAnimating()
         activityIndicatorStopWorkItem?.cancel()
+
         UIView.animate(withDuration: animatedLoad ? 0.3 : 0, animations: {
             self.scrollView.alpha = 1
         })
@@ -609,8 +610,10 @@ private extension EPUBSpreadView {
         }
 
         activityIndicatorView?.removeFromSuperview()
-        let view = UIActivityIndicatorView(style: .medium)
-        view.color = color
+        let view = UIActivityIndicatorView(style: .large)
+        // Use the app accent color (#F39913) for better visibility against text.
+        view.color = UIColor(red: 0xF3/255.0, green: 0x99/255.0, blue: 0x13/255.0, alpha: 1.0)
+        view.transform = CGAffineTransform(scaleX: 1.4, y: 1.4)
         view.translatesAutoresizingMaskIntoConstraints = false
         addSubview(view)
         view.centerXAnchor.constraint(equalTo: centerXAnchor).isActive = true

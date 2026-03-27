@@ -164,11 +164,11 @@ final class EPUBReflowableSpreadView: EPUBSpreadView {
             await evaluateScript("readium.link = \(linkJSON);")
         }
 
-        // TODO: Better solution for delaying scrolling to pending location
-        // This delay is used to wait for the web view pagination to settle and give the CSS and webview time to layout
-        // correctly before attempting to scroll to the target progression, otherwise we might end up at the wrong spot.
-        // 0.2 seconds seems like a good value for it to work on an iPhone 5s.
-        try? await Task.sleep(seconds: 0.2)
+        // Short delay to let CSS/pagination settle before scrolling to the
+        // target position. 50ms is sufficient on modern iPhones (the original
+        // 200ms was sized for iPhone 5s). No JS polling — that adds overhead
+        // by competing with the WebView's JS thread during page load.
+        try? await Task.sleep(nanoseconds: 50_000_000) // 50ms
 
         let location = pendingLocation
         await go(to: pendingLocation)
@@ -177,11 +177,6 @@ final class EPUBReflowableSpreadView: EPUBSpreadView {
         // chapter load already includes pageCount (the JS progressionChanged
         // message arrives asynchronously and may not have been processed yet).
         await fetchInitialPageCount()
-
-        // The rendering is sometimes very slow. So in case we don't show the first page of the resource, we add
-        // a generous delay before showing the spread again.
-        let delayed = !location.isStart
-        try? await Task.sleep(seconds: delayed ? 0.3 : 0)
     }
 
     /// Queries the WebView for the current page count and stores it in

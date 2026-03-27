@@ -651,6 +651,12 @@ open class EPUBNavigatorViewController: InputObservableViewController,
 
     private var spreads: [EPUBSpread] = []
 
+    // MARK: Spread Preloading
+    /// A spread view pre-created while the user drags the progress slider.
+    var preloadedSpreadView: EPUBSpreadView?
+    /// The spread index of the preloaded view.
+    var preloadedSpreadIndex: Int?
+
     /// Index of the currently visible spread.
     private var currentSpreadIndex: Int {
         paginationView?.currentIndex ?? 0
@@ -1567,8 +1573,61 @@ extension EPUBNavigatorViewController: EditingActionsControllerDelegate {
     }
 }
 
+// MARK: - Spread Preloading
+
+extension EPUBNavigatorViewController {
+    /// Pre-creates and starts loading the spread that contains the given `href`.
+    /// The WebView starts loading immediately; when the PaginationView later
+    /// requests this spread via its delegate, we return the already-loaded view
+    /// instead of creating a new one — making the chapter jump near-instant.
+    public func preloadSpread(forHref href: String) {
+        guard let anyURL = AnyURL(string: href),
+              let roIndex = readingOrder.firstIndexWithHREF(anyURL),
+              let spreadIndex = spreads.firstIndexWithReadingOrderIndex(roIndex)
+        else { return }
+
+        // Already preloaded or already in the PaginationView's loaded views
+        if spreadIndex == preloadedSpreadIndex { return }
+        if paginationView?.loadedViews[spreadIndex] != nil { return }
+
+        // Tear down any previous preload
+        clearPreloadedSpread()
+
+        // Create the spread view — this immediately starts loading the WebView
+        let spread = spreads[spreadIndex]
+        let spreadViewType = (publication.metadata.layout == .fixed)
+            ? EPUBFixedSpreadView.self : EPUBReflowableSpreadView.self
+        let view = spreadViewType.init(
+            viewModel: viewModel,
+            spread: spread,
+            scripts: [],
+            animatedLoad: false
+        )
+        view.delegate = self
+        let ucc = view.webView.configuration.userContentController
+        delegate?.navigator(self, setupUserScripts: ucc)
+
+        preloadedSpreadView = view
+        preloadedSpreadIndex = spreadIndex
+    }
+
+    /// Discards any preloaded spread, freeing memory.
+    public func clearPreloadedSpread() {
+        preloadedSpreadView?.clear()
+        preloadedSpreadView = nil
+        preloadedSpreadIndex = nil
+    }
+}
+
 extension EPUBNavigatorViewController: PaginationViewDelegate {
     func paginationView(_ paginationView: PaginationView, pageViewAtIndex index: Int) -> (UIView & PageView)? {
+        // Return a preloaded spread if one matches the requested index.
+        if index == preloadedSpreadIndex, let preloaded = preloadedSpreadView {
+            preloadedSpreadView = nil
+            preloadedSpreadIndex = nil
+            return preloaded
+        }
+
         let spread = spreads[index]
         let spreadViewType = (publication.metadata.layout == .fixed) ? EPUBFixedSpreadView.self : EPUBReflowableSpreadView.self
         let spreadView = spreadViewType.init(
