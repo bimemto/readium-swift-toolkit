@@ -178,6 +178,7 @@ final class EPUBReflowableSpreadView: EPUBSpreadView {
         // chapter load already includes pageCount (the JS progressionChanged
         // message arrives asynchronously and may not have been processed yet).
         await fetchInitialPageCount()
+    }
 
     /// Queries the WebView for the current page count and stores it in
     /// `chapterPageCount` so it's available before the first location update.
