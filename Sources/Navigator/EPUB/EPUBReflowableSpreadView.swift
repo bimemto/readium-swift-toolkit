@@ -165,10 +165,11 @@ final class EPUBReflowableSpreadView: EPUBSpreadView {
             await evaluateScript("readium.link = \(linkJSON);")
         }
 
-        // Wait for the web view pagination to settle by polling layout dimensions.
-        // Replaces the previous fixed 200ms sleep — on modern devices layout usually
-        // settles within 30-60ms, so we return as soon as it's stable.
-        await waitForLayoutStable(timeout: 0.15)
+        // Short delay to let CSS/pagination settle before scrolling to the
+        // target position. 50ms is sufficient on modern iPhones (the original
+        // 200ms was sized for iPhone 5s). No JS polling — that adds overhead
+        // by competing with the WebView's JS thread during page load.
+        try? await Task.sleep(nanoseconds: 50_000_000) // 50ms
 
         let location = pendingLocation
         await go(to: pendingLocation)
@@ -177,41 +178,6 @@ final class EPUBReflowableSpreadView: EPUBSpreadView {
         // chapter load already includes pageCount (the JS progressionChanged
         // message arrives asynchronously and may not have been processed yet).
         await fetchInitialPageCount()
-
-        // Small safety margin for non-start locations to let the scroll position
-        // settle after go(to:). Reduced from 300ms → 50ms (the previous delay was
-        // sized for iPhone 5s; modern devices don't need it).
-        if !location.isStart {
-            try? await Task.sleep(nanoseconds: 50_000_000) // 50ms
-        }
-    }
-
-    /// Polls the WebView's layout dimensions until they stabilise (two consecutive
-    /// reads return the same scrollWidth × scrollHeight), or until `timeout` elapses.
-    /// This replaces the old fixed `Task.sleep(seconds: 0.2)` and returns as soon as
-    /// the CSS/pagination layout has settled — typically in 30-60ms on modern iPhones.
-    private func waitForLayoutStable(timeout: TimeInterval) async {
-        let start = CFAbsoluteTimeGetCurrent()
-        var lastWidth: Double = -1
-        var lastHeight: Double = -1
-
-        while CFAbsoluteTimeGetCurrent() - start < timeout {
-            let result = await evaluateScript(
-                "[document.scrollingElement.scrollWidth, document.scrollingElement.scrollHeight].join(',')"
-            )
-            if case .success(let val) = result, let str = val as? String {
-                let parts = str.split(separator: ",").compactMap { Double($0) }
-                if parts.count == 2 {
-                    if parts[0] == lastWidth && parts[1] == lastHeight {
-                        return // Layout has settled
-                    }
-                    lastWidth = parts[0]
-                    lastHeight = parts[1]
-                }
-            }
-            try? await Task.sleep(nanoseconds: 30_000_000) // 30ms polling interval
-        }
-    }
 
     /// Queries the WebView for the current page count and stores it in
     /// `chapterPageCount` so it's available before the first location update.

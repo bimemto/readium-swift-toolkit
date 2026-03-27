@@ -86,6 +86,11 @@ final class PaginationView: UIView, Loggable {
     /// Guards `layoutSubviews` from resetting contentOffset during a slide animation.
     private var isSliding = false
 
+    /// Snapshot of the old spread content, displayed as an overlay during chapter
+    /// transitions to prevent the user from seeing a blank screen while the new
+    /// chapter's WebView loads.
+    private var contentPlaceholder: UIView?
+
     /// Returns whether the page views are loaded.
     var isEmpty: Bool {
         loadedViews.isEmpty
@@ -405,21 +410,32 @@ final class PaginationView: UIView, Loggable {
     }
 
     private func fadeToView(at index: Int, location: PageLocation, animated: Bool) async {
-        if animated {
-            await withCheckedContinuation { continuation in
-                UIView.animate(withDuration: 0.15, animations: {
-                    self.alpha = 0
-                }) { _ in
-                    continuation.resume()
-                }
-            }
+        // Take a snapshot of the current content BEFORE removing old spreads.
+        // This keeps the old chapter visible as an overlay while the new
+        // chapter's WebView loads, eliminating the blank-screen flash.
+        contentPlaceholder?.removeFromSuperview()
+        contentPlaceholder = nil
+        if animated, let snapshot = self.snapshotView(afterScreenUpdates: false) {
+            snapshot.frame = bounds
+            snapshot.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+            addSubview(snapshot)
+            contentPlaceholder = snapshot
         }
 
         await scrollToView(at: index, location: location)
-
-        // Restore alpha. The new spread's scrollView.alpha is 0 until
-        // showSpread() fires, so setting alpha back to 1 is visually invisible.
         self.alpha = 1
+    }
+
+    /// Removes the content placeholder snapshot. Called when the new spread's
+    /// content is ready to be displayed (via `showSpread()`).
+    func removeContentPlaceholder() {
+        guard let placeholder = contentPlaceholder else { return }
+        UIView.animate(withDuration: 0.15, animations: {
+            placeholder.alpha = 0
+        }) { _ in
+            placeholder.removeFromSuperview()
+        }
+        contentPlaceholder = nil
     }
 
     private func scrollToView(at index: Int, location: PageLocation) async {
