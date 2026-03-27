@@ -423,12 +423,6 @@ class EPUBSpreadView: UIView, Loggable, PageView {
         activityIndicatorView?.stopAnimating()
         activityIndicatorStopWorkItem?.cancel()
 
-        // Remove the snapshot overlay from the parent PaginationView now that
-        // the new chapter content is ready to be shown.
-        if let paginationView = superview?.superview as? PaginationView {
-            paginationView.removeContentPlaceholder()
-        }
-
         UIView.animate(withDuration: animatedLoad ? 0.3 : 0, animations: {
             self.scrollView.alpha = 1
         })
