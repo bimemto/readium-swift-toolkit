@@ -80,16 +80,27 @@ export function findFirstVisibleLocator() {
  * viewport top position, not from the beginning of the paragraph.
  */
 function getVisibleTextAtViewportTop() {
-  var x = window.innerWidth / 2;
   // Scan from top of viewport downward to find actual text
   for (var y = 0; y < window.innerHeight * 0.3; y += 5) {
-    var range = document.caretRangeFromPoint(x, y);
-    if (!range || !range.startContainer) continue;
+    // First probe at center to check if this y has text
+    var centerRange = document.caretRangeFromPoint(window.innerWidth / 2, y);
+    if (!centerRange || !centerRange.startContainer) continue;
+    if (centerRange.startContainer.nodeType !== Node.TEXT_NODE) continue;
+    if (!centerRange.startContainer.textContent || !centerRange.startContainer.textContent.trim()) continue;
+
+    // Found a line with text — now probe from left edge to get start of line
+    var range = null;
+    for (var x = 1; x < window.innerWidth / 2; x += 5) {
+      var r = document.caretRangeFromPoint(x, y);
+      if (r && r.startContainer && r.startContainer.nodeType === Node.TEXT_NODE &&
+          r.startContainer.textContent && r.startContainer.textContent.trim()) {
+        range = r;
+        break;
+      }
+    }
+    if (!range) range = centerRange;
 
     var node = range.startContainer;
-    if (node.nodeType !== Node.TEXT_NODE) continue;
-    if (!node.textContent || !node.textContent.trim()) continue;
-
     // Get text from the exact caret position (not from start of paragraph)
     var text = node.textContent.substring(range.startOffset).trim();
 
