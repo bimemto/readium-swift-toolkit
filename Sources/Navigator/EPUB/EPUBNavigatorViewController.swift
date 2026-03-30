@@ -1663,3 +1663,88 @@ extension EPUBNavigatorViewController: PaginationViewDelegate {
         spreads[index].positionCount(in: readingOrder, positionsByReadingOrder: positionsByReadingOrder)
     }
 }
+
+// MARK: - Off-screen Page Rendering (for page curl capture)
+
+extension EPUBNavigatorViewController {
+
+    /// Renders the page at the given locator to a UIImage without navigating the main view.
+    /// Uses the same rendering pipeline (HTTP server, CSS, fonts) as the main view.
+    /// The main WebView is never touched — reading position is safe.
+    public func renderPage(at locator: Locator) async -> UIImage? {
+        let locator = publication.normalizeLocator(locator)
+
+        // Find which spread this locator belongs to
+        guard let roIndex = readingOrder.firstIndexWithHREF(locator.href),
+              let spreadIndex = spreads.firstIndexWithReadingOrderIndex(roIndex) else {
+            return nil
+        }
+        let spread = spreads[spreadIndex]
+
+        // Create a temporary spread view with the SAME viewModel.
+        // init automatically calls loadSpread() which loads the chapter URL.
+        let spreadView = EPUBReflowableSpreadView(
+            viewModel: viewModel,
+            spread: spread,
+            scripts: [],
+            animatedLoad: false
+        )
+
+        // Frame must match the main view for identical page layout/breaks.
+        let targetSize = view.bounds.size
+        spreadView.frame = CGRect(origin: .zero, size: targetSize)
+
+        // Attach off-screen so WKWebView actually renders.
+        // Using negative x — WKWebView skips rendering when isHidden=true
+        // but renders when merely off-screen.
+        let container = UIView(frame: CGRect(
+            x: -targetSize.width, y: 0,
+            width: targetSize.width, height: targetSize.height
+        ))
+        container.clipsToBounds = true
+        view.addSubview(container)
+        container.addSubview(spreadView)
+
+        defer {
+            spreadView.removeFromSuperview()
+            container.removeFromSuperview()
+        }
+
+        // Wait for the spread to fully load (HTML + JS + CSS ready).
+        // spreadLoaded() is an existing async method on EPUBSpreadView.
+        await spreadView.spreadLoaded()
+
+        // Scroll to the exact position within the spread.
+        await spreadView.go(to: .locator(locator))
+
+        // Wait for rendering to settle (double requestAnimationFrame).
+        await waitForOffscreenRender(spreadView.webView)
+
+        // Take snapshot from the off-screen WebView.
+        return await snapshotWebView(spreadView.webView)
+    }
+
+    private func waitForOffscreenRender(_ webView: WKWebView) async {
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            webView.callAsyncJavaScript(
+                "await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))",
+                arguments: [:],
+                in: nil,
+                in: .page
+            ) { _ in
+                continuation.resume()
+            }
+        }
+    }
+
+    private func snapshotWebView(_ webView: WKWebView) async -> UIImage? {
+        let config = WKSnapshotConfiguration()
+        config.rect = webView.bounds
+        config.afterScreenUpdates = true
+        return await withCheckedContinuation { continuation in
+            webView.takeSnapshot(with: config) { image, _ in
+                continuation.resume(returning: image)
+            }
+        }
+    }
+}
