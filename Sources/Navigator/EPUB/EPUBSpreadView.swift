@@ -49,6 +49,11 @@ class EPUBSpreadView: UIView, Loggable, PageView {
     let spread: EPUBSpread
     private(set) var focusedResource: ReadingOrder.Index?
 
+    /// When true, horizontal scroll gestures are cancelled while the user has an active
+    /// text selection. Set from the bridge layer (EPUBViewController) for paginated modes
+    /// (slide/tap/curl) so swiping doesn't turn the page while text is selected.
+    static var blockScrollDuringSelection = false
+
     let webView: WebView
 
     private var lastClick: ClickEvent? = nil
@@ -576,6 +581,15 @@ extension EPUBSpreadView: UIScrollViewDelegate {
     }
 
     func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
+        // In paginated modes, block scroll while text is selected to keep selection
+        // within the current page. Cancel the drag by toggling the pan recognizer.
+        if EPUBSpreadView.blockScrollDuringSelection {
+            let offset = scrollView.contentOffset
+            scrollView.panGestureRecognizer.isEnabled = false
+            scrollView.panGestureRecognizer.isEnabled = true
+            scrollView.setContentOffset(offset, animated: false)
+            return
+        }
         webView.clearSelection()
     }
 
