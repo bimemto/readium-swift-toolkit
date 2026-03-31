@@ -869,6 +869,14 @@ open class EPUBNavigatorViewController: InputObservableViewController,
             }
         }
 
+        // Enrich locator with visible text for cross-device sync precision
+        if var loc = location, loc.text.highlight == nil {
+            if let visibleLocator = await spreadView.findFirstVisibleElementLocator() {
+                loc = loc.copy(text: { $0 = visibleLocator.text })
+                location = loc
+            }
+        }
+
         return (location, viewport)
     }
 
