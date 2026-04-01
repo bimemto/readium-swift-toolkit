@@ -60,6 +60,7 @@ class EPUBSpreadView: UIView, Loggable, PageView {
     private var activityIndicatorStopWorkItem: DispatchWorkItem?
 
     private(set) var isSpreadLoaded = false
+    private var isShowingErrorPage = false
 
     required init(
         viewModel: EPUBNavigatorViewModel,
@@ -538,8 +539,38 @@ extension EPUBSpreadView: WKScriptMessageHandler {
 }
 
 extension EPUBSpreadView: WKNavigationDelegate {
+    private func loadContentUnavailablePage() {
+        guard !isShowingErrorPage else { return }
+        isShowingErrorPage = true
+
+        let html = """
+        <html>
+        <head>
+            <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+        </head>
+        <body style="
+            display:flex;align-items:center;justify-content:center;
+            height:100vh;margin:0;
+            color:#3B2119;background:transparent;text-align:center;
+        ">
+            <div>
+                <p style="font-size:48px;margin:0;">📖</p>
+                <p style="font-size:1em;font-family:'Aleo',serif;">This page content is not available</p>
+            </div>
+        </body></html>
+        """
+        webView.loadHTMLString(html, baseURL: nil)
+        setNeedsStopActivityIndicator()
+    }
+
     func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
         log(.error, error)
+        loadContentUnavailablePage()
+    }
+
+    func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
+        log(.error, error)
+        loadContentUnavailablePage()
     }
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
