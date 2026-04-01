@@ -6,9 +6,9 @@
 
 // Script used for the single spread wrapper HTML page for fixed layout resources.
 
-import { FixedPage, PageType } from "./fixed-page";
+import { FixedPage, PageType } from './fixed-page';
 
-var page = FixedPage("page", PageType.SINGLE);
+var page = FixedPage('page', PageType.SINGLE);
 
 // Public API called from Swift.
 global.spread = {
@@ -24,7 +24,7 @@ global.spread = {
 
   // Evaluates a JavaScript in the context of a resource.
   eval: function (href, script) {
-    if (href === "#" || href === "" || page.link?.href === href) {
+    if (href === '#' || href === '' || page.link?.href === href) {
       return page.eval(script);
     }
   },

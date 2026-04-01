@@ -6,7 +6,7 @@
 
 // Script used for fixed layouts resources.
 
-import "./index";
+import './index';
 
 window.readium.isFixedLayout = true;
 

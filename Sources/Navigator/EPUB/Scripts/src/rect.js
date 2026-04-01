@@ -4,7 +4,7 @@
 //  available in the top-level LICENSE file of the project.
 //
 
-import { log as logNative } from "./utils";
+import { log as logNative } from './utils';
 
 const debug = false;
 
@@ -44,7 +44,7 @@ export function adjustPointToViewport(point) {
 
 export function getClientRectsNoOverlap(
   range,
-  doNotMergeHorizontallyAlignedRects
+  doNotMergeHorizontallyAlignedRects,
 ) {
   let clientRects = range.getClientRects();
 
@@ -63,7 +63,7 @@ export function getClientRectsNoOverlap(
   const mergedRects = mergeTouchingRects(
     originalRects,
     tolerance,
-    doNotMergeHorizontallyAlignedRects
+    doNotMergeHorizontallyAlignedRects,
   );
   const noContainedRects = removeContainedRects(mergedRects, tolerance);
   const newRects = replaceOverlapingRects(noContainedRects);
@@ -73,10 +73,10 @@ export function getClientRectsNoOverlap(
     const bigEnough = rect.width * rect.height > minArea;
     if (!bigEnough) {
       if (newRects.length > 1) {
-        log("CLIENT RECT: remove small");
+        log('CLIENT RECT: remove small');
         newRects.splice(j, 1);
       } else {
-        log("CLIENT RECT: remove small, but keep otherwise empty!");
+        log('CLIENT RECT: remove small, but keep otherwise empty!');
         break;
       }
     }
@@ -88,14 +88,14 @@ export function getClientRectsNoOverlap(
 function mergeTouchingRects(
   rects,
   tolerance,
-  doNotMergeHorizontallyAlignedRects
+  doNotMergeHorizontallyAlignedRects,
 ) {
   for (let i = 0; i < rects.length; i++) {
     for (let j = i + 1; j < rects.length; j++) {
       const rect1 = rects[i];
       const rect2 = rects[j];
       if (rect1 === rect2) {
-        log("mergeTouchingRects rect1 === rect2 ??!");
+        log('mergeTouchingRects rect1 === rect2 ??!');
         continue;
       }
       const rectsLineUpVertically =
@@ -111,9 +111,9 @@ function mergeTouchingRects(
       const canMerge = aligned && rectsTouchOrOverlap(rect1, rect2, tolerance);
       if (canMerge) {
         log(
-          `CLIENT RECT: merging two into one, VERTICAL: ${rectsLineUpVertically} HORIZONTAL: ${rectsLineUpHorizontally} (${doNotMergeHorizontallyAlignedRects})`
+          `CLIENT RECT: merging two into one, VERTICAL: ${rectsLineUpVertically} HORIZONTAL: ${rectsLineUpHorizontally} (${doNotMergeHorizontallyAlignedRects})`,
         );
-        const newRects = rects.filter((rect) => {
+        const newRects = rects.filter(rect => {
           return rect !== rect1 && rect !== rect2;
         });
         const replacementClientRect = getBoundingRect(rect1, rect2);
@@ -121,7 +121,7 @@ function mergeTouchingRects(
         return mergeTouchingRects(
           newRects,
           tolerance,
-          doNotMergeHorizontallyAlignedRects
+          doNotMergeHorizontallyAlignedRects,
         );
       }
     }
@@ -149,7 +149,7 @@ function removeContainedRects(rects, tolerance) {
   for (const rect of rects) {
     const bigEnough = rect.width > 1 && rect.height > 1;
     if (!bigEnough) {
-      log("CLIENT RECT: remove tiny");
+      log('CLIENT RECT: remove tiny');
       rectsToKeep.delete(rect);
       continue;
     }
@@ -161,7 +161,7 @@ function removeContainedRects(rects, tolerance) {
         continue;
       }
       if (rectContains(possiblyContainingRect, rect, tolerance)) {
-        log("CLIENT RECT: remove contained");
+        log('CLIENT RECT: remove contained');
         rectsToKeep.delete(rect);
         break;
       }
@@ -194,7 +194,7 @@ function replaceOverlapingRects(rects) {
       const rect1 = rects[i];
       const rect2 = rects[j];
       if (rect1 === rect2) {
-        log("replaceOverlapingRects rect1 === rect2 ??!");
+        log('replaceOverlapingRects rect1 === rect2 ??!');
         continue;
       }
       if (rectsTouchOrOverlap(rect1, rect2, -1)) {
@@ -215,7 +215,7 @@ function replaceOverlapingRects(rects) {
           }
         }
         log(`CLIENT RECT: overlap, cut one rect into ${toAdd.length}`);
-        const newRects = rects.filter((rect) => {
+        const newRects = rects.filter(rect => {
           return rect !== toRemove;
         });
         Array.prototype.push.apply(newRects, toAdd);

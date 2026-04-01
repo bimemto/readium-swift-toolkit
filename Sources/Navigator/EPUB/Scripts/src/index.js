@@ -6,9 +6,9 @@
 
 // Base script used by both reflowable and fixed layout resources.
 
-import "./gestures";
-import "./keyboard";
-import { findFirstVisibleLocator } from "./dom";
+import './gestures';
+import './keyboard';
+import { findFirstVisibleLocator } from './dom';
 import {
   removeProperty,
   scrollLeft,
@@ -18,8 +18,8 @@ import {
   scrollToLocator,
   setProperty,
   setCSSProperties,
-} from "./utils";
-import { getDecorations, registerTemplates } from "./decorator";
+} from './utils';
+import { getDecorations, registerTemplates } from './decorator';
 
 // Public API used by the navigator.
 global.readium = {

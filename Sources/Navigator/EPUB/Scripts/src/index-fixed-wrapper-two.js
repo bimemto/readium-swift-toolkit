@@ -6,12 +6,12 @@
 
 // Script used for the single spread wrapper HTML page for fixed layout resources.
 
-import { FixedPage, PageType } from "./fixed-page";
+import { FixedPage, PageType } from './fixed-page';
 
 var pages = {
-  left: FixedPage("page-left", PageType.SPREAD_LEFT),
-  right: FixedPage("page-right", PageType.SPREAD_RIGHT),
-  center: FixedPage("page-center", PageType.SPREAD_CENTER),
+  left: FixedPage('page-left', PageType.SPREAD_LEFT),
+  right: FixedPage('page-right', PageType.SPREAD_RIGHT),
+  center: FixedPage('page-center', PageType.SPREAD_CENTER),
 };
 
 function forEachPage(callback) {
@@ -63,7 +63,7 @@ global.spread = {
   // Evaluates a JavaScript in the context of a resource.
   // If the href is '#' or empty, then the script is executed on all the pages.
   eval: function (href, script) {
-    if (href === "#" || href === "") {
+    if (href === '#' || href === '') {
       forEachPage(function (page) {
         page.eval(script);
       });
@@ -87,7 +87,7 @@ global.spread = {
         bottom: safeAreaInsets.bottom,
         left: safeAreaInsets.left,
       },
-      fit
+      fit,
     );
 
     pages.right.setViewport(
@@ -98,7 +98,7 @@ global.spread = {
         bottom: safeAreaInsets.bottom,
         left: 0,
       },
-      fit
+      fit,
     );
 
     pages.center.setViewport(
@@ -109,7 +109,7 @@ global.spread = {
         bottom: safeAreaInsets.bottom,
         left: 0,
       },
-      fit
+      fit,
     );
   },
 };
