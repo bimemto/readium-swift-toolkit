@@ -4,8 +4,8 @@
 //  available in the top-level LICENSE file of the project.
 //
 
-import { isScrollModeEnabled } from "./utils";
-import { getCssSelector } from "css-selector-generator";
+import { isScrollModeEnabled } from './utils';
+import { getCssSelector } from 'css-selector-generator';
 
 // Returns `element` or its first parent that is considered "user interactive".
 // For example a link, a video clip or a text field.
@@ -17,18 +17,18 @@ export function findNearestInteractiveElement(element) {
   }
 
   var interactiveTags = [
-    "a",
-    "audio",
-    "button",
-    "canvas",
-    "details",
-    "input",
-    "label",
-    "option",
-    "select",
-    "submit",
-    "textarea",
-    "video",
+    'a',
+    'audio',
+    'button',
+    'canvas',
+    'details',
+    'input',
+    'label',
+    'option',
+    'select',
+    'submit',
+    'textarea',
+    'video',
   ];
   if (interactiveTags.indexOf(element.nodeName.toLowerCase()) !== -1) {
     return element.outerHTML;
@@ -36,8 +36,8 @@ export function findNearestInteractiveElement(element) {
 
   // Checks whether the element is editable by the user.
   if (
-    element.hasAttribute("contenteditable") &&
-    element.getAttribute("contenteditable").toLowerCase() != "false"
+    element.hasAttribute('contenteditable') &&
+    element.getAttribute('contenteditable').toLowerCase() != 'false'
   ) {
     return element.outerHTML;
   }
@@ -63,8 +63,8 @@ export function findFirstVisibleLocator() {
   }
 
   return {
-    href: "#",
-    type: "application/xhtml+xml",
+    href: '#',
+    type: 'application/xhtml+xml',
     locations: {
       cssSelector: getCssSelector(element),
     },
@@ -86,14 +86,23 @@ function getVisibleTextAtViewportTop() {
     var centerRange = document.caretRangeFromPoint(window.innerWidth / 2, y);
     if (!centerRange || !centerRange.startContainer) continue;
     if (centerRange.startContainer.nodeType !== Node.TEXT_NODE) continue;
-    if (!centerRange.startContainer.textContent || !centerRange.startContainer.textContent.trim()) continue;
+    if (
+      !centerRange.startContainer.textContent ||
+      !centerRange.startContainer.textContent.trim()
+    )
+      continue;
 
     // Found a line with text — now probe from left edge to get start of line
     var range = null;
     for (var x = 1; x < window.innerWidth / 2; x += 5) {
       var r = document.caretRangeFromPoint(x, y);
-      if (r && r.startContainer && r.startContainer.nodeType === Node.TEXT_NODE &&
-          r.startContainer.textContent && r.startContainer.textContent.trim()) {
+      if (
+        r &&
+        r.startContainer &&
+        r.startContainer.nodeType === Node.TEXT_NODE &&
+        r.startContainer.textContent &&
+        r.startContainer.textContent.trim()
+      ) {
         range = r;
         break;
       }
@@ -106,7 +115,10 @@ function getVisibleTextAtViewportTop() {
 
     // Collect more text from subsequent text nodes if needed
     if (text.length < 100) {
-      var walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+      var walker = document.createTreeWalker(
+        document.body,
+        NodeFilter.SHOW_TEXT,
+      );
       var foundCurrent = false;
       while (walker.nextNode()) {
         if (walker.currentNode === node) {
@@ -158,8 +170,8 @@ function isElementVisible(element) {
 function shouldIgnoreElement(element) {
   const elStyle = getComputedStyle(element);
   if (elStyle) {
-    const display = elStyle.getPropertyValue("display");
-    if (display != "block") {
+    const display = elStyle.getPropertyValue('display');
+    if (display != 'block') {
       return true;
     }
     // Cannot be relied upon, because web browser engine reports invisible when out of view in
@@ -168,8 +180,8 @@ function shouldIgnoreElement(element) {
     // if (visibility === "hidden") {
     //     return false;
     // }
-    const opacity = elStyle.getPropertyValue("opacity");
-    if (opacity === "0") {
+    const opacity = elStyle.getPropertyValue('opacity');
+    if (opacity === '0') {
       return true;
     }
   }

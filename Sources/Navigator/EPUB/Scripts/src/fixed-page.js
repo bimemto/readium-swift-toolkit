@@ -6,17 +6,17 @@
 
 // Page layout types.
 export const PageType = {
-  SINGLE: "single",
-  SPREAD_LEFT: "spread-left",
-  SPREAD_RIGHT: "spread-right",
-  SPREAD_CENTER: "spread-center",
+  SINGLE: 'single',
+  SPREAD_LEFT: 'spread-left',
+  SPREAD_RIGHT: 'spread-right',
+  SPREAD_CENTER: 'spread-center',
 };
 
 // Fit modes for scaling content.
 export const Fit = {
-  AUTO: "auto",
-  PAGE: "page",
-  WIDTH: "width",
+  AUTO: 'auto',
+  PAGE: 'page',
+  WIDTH: 'width',
 };
 
 // Manages a fixed layout resource embedded in an iframe.
@@ -38,15 +38,15 @@ export function FixedPage(iframeId, pageType) {
 
   // iFrame containing the page.
   var _iframe = document.getElementById(iframeId);
-  _iframe.addEventListener("load", loadPageSize);
+  _iframe.addEventListener('load', loadPageSize);
 
   // Viewport element containing the iFrame.
-  var _viewport = _iframe.closest(".viewport");
+  var _viewport = _iframe.closest('.viewport');
 
   // Parses the page size from the viewport meta tag of the loaded resource.
   function loadPageSize() {
     var viewport = _iframe.contentWindow.document.querySelector(
-      "meta[name=viewport]"
+      'meta[name=viewport]',
     );
     if (!viewport) {
       return;
@@ -71,8 +71,8 @@ export function FixedPage(iframeId, pageType) {
       return;
     }
 
-    _iframe.style.width = _pageSize.width + "px";
-    _iframe.style.height = _pageSize.height + "px";
+    _iframe.style.width = _pageSize.width + 'px';
+    _iframe.style.height = _pageSize.height + 'px';
 
     // Calculates the zoom scale required to fit the content to the viewport.
     var widthRatio = _viewportSize.width / _pageSize.width;
@@ -107,27 +107,27 @@ export function FixedPage(iframeId, pageType) {
     if (_fit === Fit.WIDTH && scaledHeight > _viewportSize.height) {
       // Content overflows: align to top with safe area inset
       // Override the CSS centering
-      _iframe.style.top = _safeAreaInsets.top + "px";
+      _iframe.style.top = _safeAreaInsets.top + 'px';
       if (needsHorizontalCenter) {
-        _iframe.style.transform = "translateX(-50%)";
+        _iframe.style.transform = 'translateX(-50%)';
       } else {
-        _iframe.style.transform = "none";
+        _iframe.style.transform = 'none';
       }
     } else {
       // Content fits or is page fit: center vertically
       // Keep the CSS centering but adjust for safe area insets
       var verticalOffset = _safeAreaInsets.top - _safeAreaInsets.bottom;
-      _iframe.style.top = "calc(50% + " + verticalOffset + "px)";
+      _iframe.style.top = 'calc(50% + ' + verticalOffset + 'px)';
       if (needsHorizontalCenter) {
-        _iframe.style.transform = "translate(-50%, -50%)";
+        _iframe.style.transform = 'translate(-50%, -50%)';
       } else {
-        _iframe.style.transform = "translateY(-50%)";
+        _iframe.style.transform = 'translateY(-50%)';
       }
     }
 
     // Sets the viewport of the wrapper page (this page) to scale the iframe.
-    var viewport = document.querySelector("meta[name=viewport]");
-    viewport.content = "initial-scale=" + scale + ", minimum-scale=" + scale;
+    var viewport = document.querySelector('meta[name=viewport]');
+    viewport.content = 'initial-scale=' + scale + ', minimum-scale=' + scale;
   }
 
   return {
@@ -151,7 +151,7 @@ export function FixedPage(iframeId, pageType) {
       page.isLoading = true;
 
       function loaded() {
-        _iframe.removeEventListener("load", loaded);
+        _iframe.removeEventListener('load', loaded);
 
         // Timeout to wait for the page to be laid out.
         // Note that using `requestAnimationFrame()` instead causes performance
@@ -159,7 +159,7 @@ export function FixedPage(iframeId, pageType) {
         setTimeout(function () {
           page.isLoading = false;
           _iframe.contentWindow.eval(
-            `readium.link = ${JSON.stringify(resource.link)};`
+            `readium.link = ${JSON.stringify(resource.link)};`,
           );
           if (completion) {
             completion();
@@ -167,7 +167,7 @@ export function FixedPage(iframeId, pageType) {
         }, 100);
       }
 
-      _iframe.addEventListener("load", loaded);
+      _iframe.addEventListener('load', loaded);
       _iframe.src = resource.url;
     },
 
@@ -178,7 +178,7 @@ export function FixedPage(iframeId, pageType) {
       }
       this.link = null;
       _pageSize = null;
-      _iframe.src = "about:blank";
+      _iframe.src = 'about:blank';
     },
 
     // Evaluates a script in the context of the page.
@@ -201,12 +201,12 @@ export function FixedPage(iframeId, pageType) {
 
     // Shows the page's viewport.
     show: function () {
-      _viewport.style.display = "block";
+      _viewport.style.display = 'block';
     },
 
     // Hides the page's viewport.
     hide: function () {
-      _viewport.style.display = "none";
+      _viewport.style.display = 'none';
     },
   };
 }

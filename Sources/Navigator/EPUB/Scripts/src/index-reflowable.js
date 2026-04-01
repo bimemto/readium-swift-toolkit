@@ -6,7 +6,7 @@
 
 // Script used for reflowable resources.
 
-import "./index";
+import './index';
 
 window.readium.isReflowable = true;
 
@@ -17,7 +17,7 @@ window.readium.isReflowable = true;
 // HTML and external resources (stylesheets, images, etc) have been loaded.
 webkit.messageHandlers.spreadLoadStarted.postMessage({});
 
-window.addEventListener("load", function () {
+window.addEventListener('load', function () {
   // Notifies native code that the page is loaded after it is rendered.
   // Waiting for the next animation frame seems to do the trick to make sure the page is fully rendered.
   window.requestAnimationFrame(function () {
@@ -25,11 +25,11 @@ window.addEventListener("load", function () {
   });
 
   // Setups the `viewport` meta tag to disable zooming.
-  let meta = document.createElement("meta");
-  meta.setAttribute("name", "viewport");
+  let meta = document.createElement('meta');
+  meta.setAttribute('name', 'viewport');
   meta.setAttribute(
-    "content",
-    "width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no"
+    'content',
+    'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no',
   );
   document.head.appendChild(meta);
 });

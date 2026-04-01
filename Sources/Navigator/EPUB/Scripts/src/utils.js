@@ -6,11 +6,11 @@
 
 // Catch JS errors to log them in the app.
 
-import { TextQuoteAnchor } from "./vendor/hypothesis/anchoring/types";
-import { getCurrentSelection } from "./selection";
+import { TextQuoteAnchor } from './vendor/hypothesis/anchoring/types';
+import { getCurrentSelection } from './selection';
 
 window.addEventListener(
-  "error",
+  'error',
   function (event) {
     webkit.messageHandlers.logError.postMessage({
       message: event.message,
@@ -18,12 +18,12 @@ window.addEventListener(
       line: event.lineno,
     });
   },
-  false
+  false,
 );
 
 // Notify native code that the page has loaded.
 window.addEventListener(
-  "load",
+  'load',
   function () {
     var pendingResize;
     const observer = new ResizeObserver(() => {
@@ -38,7 +38,7 @@ window.addEventListener(
     });
     observer.observe(document.body);
   },
-  false
+  false,
 );
 
 function onViewportWidthChanged() {
@@ -52,7 +52,7 @@ function onViewportWidthChanged() {
  * turning issues. To fix this, we insert a blank virtual column at the end of the resource.
  */
 function appendVirtualColumnIfNeeded() {
-  const id = "readium-virtual-page";
+  const id = 'readium-virtual-page';
   var virtualCol = document.getElementById(id);
   if (isScrollModeEnabled() || getColumnCountPerScreen() != 2) {
     virtualCol?.remove();
@@ -65,10 +65,10 @@ function appendVirtualColumnIfNeeded() {
       if (virtualCol) {
         virtualCol.remove();
       } else {
-        virtualCol = document.createElement("div");
-        virtualCol.setAttribute("id", id);
-        virtualCol.style.breakBefore = "column";
-        virtualCol.innerHTML = "&#8203;"; // zero-width space
+        virtualCol = document.createElement('div');
+        virtualCol.setAttribute('id', id);
+        virtualCol.style.breakBefore = 'column';
+        virtualCol.innerHTML = '&#8203;'; // zero-width space
         document.body.appendChild(virtualCol);
       }
     }
@@ -87,7 +87,7 @@ function notifyProgressions(progressions) {
   webkit.messageHandlers.progressionChanged.postMessage(progressions);
 }
 
-window.addEventListener("scroll", onScroll);
+window.addEventListener('scroll', onScroll);
 
 function onScroll() {
   if (readium.isFixedLayout) {
@@ -102,7 +102,10 @@ function onScroll() {
     lastKnownProgressions = {
       first: scrollY / totalContentHeight,
       last: (scrollY + viewportHeight) / totalContentHeight,
-      pageCount: viewportHeight > 0 ? Math.max(1, Math.ceil(totalContentHeight / viewportHeight - 0.1)) : 1,
+      pageCount:
+        viewportHeight > 0
+          ? Math.max(1, Math.ceil(totalContentHeight / viewportHeight - 0.1))
+          : 1,
     };
   } else {
     let scrollX = window.scrollX;
@@ -115,7 +118,8 @@ function onScroll() {
     lastKnownProgressions = {
       first: scrollX / totalContentWidth,
       last: (scrollX + viewportWidth) / totalContentWidth,
-      pageCount: viewportWidth > 0 ? Math.round(totalContentWidth / viewportWidth) : 1,
+      pageCount:
+        viewportWidth > 0 ? Math.round(totalContentWidth / viewportWidth) : 1,
     };
   }
 
@@ -134,37 +138,37 @@ function onScroll() {
 }
 
 document.addEventListener(
-  "selectionchange",
+  'selectionchange',
   debounce(50, function () {
     webkit.messageHandlers.selectionChanged.postMessage(getCurrentSelection());
-  })
+  }),
 );
 
 export function getColumnCountPerScreen() {
   return parseInt(
     window
       .getComputedStyle(document.documentElement)
-      .getPropertyValue("column-count")
+      .getPropertyValue('column-count'),
   );
 }
 
 export function isScrollModeEnabled() {
   const style = document.documentElement.style;
-  return style.getPropertyValue("--USER__view").trim() == "readium-scroll-on";
+  return style.getPropertyValue('--USER__view').trim() == 'readium-scroll-on';
 }
 
 export function isVerticalWritingMode() {
   const writingMode = window
     .getComputedStyle(document.documentElement)
-    .getPropertyValue("writing-mode");
-  return writingMode.startsWith("vertical");
+    .getPropertyValue('writing-mode');
+  return writingMode.startsWith('vertical');
 }
 
 export function isRTL() {
   const style = window.getComputedStyle(document.documentElement);
   return (
-    style.getPropertyValue("direction") == "rtl" ||
-    style.getPropertyValue("writing-mode") == "vertical-rl"
+    style.getPropertyValue('direction') == 'rtl' ||
+    style.getPropertyValue('writing-mode') == 'vertical-rl'
   );
 }
 
@@ -183,7 +187,7 @@ export function scrollToId(id) {
 export function scrollToPosition(position, dir) {
   if (position < 0 || position > 1) {
     console.error(
-      `Expected a valid progression in scrollToPosition, got ${position}`
+      `Expected a valid progression in scrollToPosition, got ${position}`,
     );
     return;
   }
@@ -198,7 +202,7 @@ export function scrollToPosition(position, dir) {
     }
   } else {
     var documentWidth = document.scrollingElement.scrollWidth;
-    var factor = dir == "rtl" ? -1 : 1;
+    var factor = dir == 'rtl' ? -1 : 1;
     let offset = documentWidth * position * factor;
     document.scrollingElement.scrollLeft = snapOffset(offset);
   }
@@ -225,7 +229,7 @@ function scrollToRect(rect) {
     document.scrollingElement.scrollTop = rect.top + window.scrollY;
   } else {
     document.scrollingElement.scrollLeft = snapOffset(
-      rect.left + window.scrollX
+      rect.left + window.scrollX,
     );
   }
 
@@ -234,7 +238,7 @@ function scrollToRect(rect) {
 
 // Returns false if the page is already at the left-most scroll offset.
 export function scrollLeft(dir) {
-  var isRTL = dir == "rtl";
+  var isRTL = dir == 'rtl';
   var documentWidth = document.scrollingElement.scrollWidth;
   var pageWidth = window.innerWidth;
   var offset = window.scrollX - pageWidth;
@@ -244,7 +248,7 @@ export function scrollLeft(dir) {
 
 // Returns false if the page is already at the right-most scroll offset.
 export function scrollRight(dir) {
-  var isRTL = dir == "rtl";
+  var isRTL = dir == 'rtl';
   var documentWidth = document.scrollingElement.scrollWidth;
   var pageWidth = window.innerWidth;
   var offset = window.scrollX + pageWidth;
@@ -347,7 +351,7 @@ export function setProperty(key, value) {
     var root = document.documentElement;
     // The `!important` annotation is added with `setProperty()` because if
     // it's part of the `value`, it will be ignored by the Web View.
-    root.style.setProperty(key, value, "important");
+    root.style.setProperty(key, value, 'important');
   }
 }
 
@@ -375,7 +379,7 @@ function debounce(delay, func) {
 }
 
 export function log() {
-  var message = Array.prototype.slice.call(arguments).join(" ");
+  var message = Array.prototype.slice.call(arguments).join(' ');
   webkit.messageHandlers.log.postMessage(message);
 }
 

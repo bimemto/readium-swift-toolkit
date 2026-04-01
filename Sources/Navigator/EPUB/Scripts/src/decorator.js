@@ -8,11 +8,11 @@ import {
   getClientRectsNoOverlap,
   rectContainsPoint,
   toNativeRect,
-} from "./rect";
-import { log, logErrorMessage, rangeFromLocator } from "./utils";
+} from './rect';
+import { log, logErrorMessage, rangeFromLocator } from './utils';
 
 // Polyfill for iOS 13.3
-import { ResizeObserver as ResizeObserverPolyfill } from "@juggle/resize-observer";
+import { ResizeObserver as ResizeObserverPolyfill } from '@juggle/resize-observer';
 const ResizeObserver = window.ResizeObserver || ResizeObserverPolyfill;
 
 let styles = new Map();
@@ -39,19 +39,19 @@ function getContainingElement(node) {
  * Each template object is indexed by the style ID.
  */
 export function registerTemplates(newStyles) {
-  var stylesheet = "";
+  var stylesheet = '';
 
   for (const [id, style] of Object.entries(newStyles)) {
     styles.set(id, style);
     if (style.stylesheet) {
-      stylesheet += style.stylesheet + "\n";
+      stylesheet += style.stylesheet + '\n';
     }
   }
 
   if (stylesheet) {
-    let styleElement = document.createElement("style");
+    let styleElement = document.createElement('style');
     styleElement.innerHTML = stylesheet;
-    document.getElementsByTagName("head")[0].appendChild(styleElement);
+    document.getElementsByTagName('head')[0].appendChild(styleElement);
   }
 }
 
@@ -61,7 +61,7 @@ export function registerTemplates(newStyles) {
 export function getDecorations(groupName) {
   var group = groups.get(groupName);
   if (!group) {
-    let id = "r2-decoration-" + lastGroupId++;
+    let id = 'r2-decoration-' + lastGroupId++;
     group = DecorationGroup(id, groupName);
     groups.set(groupName, group);
   }
@@ -135,7 +135,7 @@ export function DecorationGroup(groupId, groupName) {
    * Adds a new decoration to the group.
    */
   function add(decoration) {
-    let id = groupId + "-" + lastItemId++;
+    let id = groupId + '-' + lastItemId++;
 
     let range = rangeFromLocator(decoration.locator);
     if (!range) {
@@ -152,7 +152,7 @@ export function DecorationGroup(groupId, groupName) {
    * Removes the decoration with given ID from the group.
    */
   function remove(decorationId) {
-    let index = items.findIndex((i) => i.decoration.id === decorationId);
+    let index = items.findIndex(i => i.decoration.id === decorationId);
     if (index === -1) {
       return;
     }
@@ -189,7 +189,7 @@ export function DecorationGroup(groupId, groupName) {
    */
   function requestLayout() {
     clearContainer();
-    items.forEach((item) => layout(item));
+    items.forEach(item => layout(item));
   }
 
   /**
@@ -204,15 +204,15 @@ export function DecorationGroup(groupId, groupName) {
       return;
     }
 
-    let itemContainer = document.createElement("div");
+    let itemContainer = document.createElement('div');
     itemContainer.id = item.id;
     itemContainer.dataset.style = item.decoration.style;
-    itemContainer.style.pointerEvents = "none";
+    itemContainer.style.pointerEvents = 'none';
 
     const documentWritingMode = getDocumentWritingMode();
     const isVertical =
-      documentWritingMode === "vertical-rl" ||
-      documentWritingMode === "vertical-lr";
+      documentWritingMode === 'vertical-rl' ||
+      documentWritingMode === 'vertical-lr';
 
     const scrollingElement = document.scrollingElement;
     const { scrollLeft: xOffset, scrollTop: yOffset } = scrollingElement;
@@ -222,19 +222,19 @@ export function DecorationGroup(groupId, groupName) {
     const columnCount =
       parseInt(
         getComputedStyle(document.documentElement).getPropertyValue(
-          "column-count"
-        )
+          'column-count',
+        ),
       ) || 1;
     const pageSize =
       (isVertical ? viewportHeight : viewportWidth) / columnCount;
 
     function positionElement(element, rect, boundingRect, writingMode) {
-      element.style.position = "absolute";
-      const isVerticalRL = writingMode === "vertical-rl";
-      const isVerticalLR = writingMode === "vertical-lr";
+      element.style.position = 'absolute';
+      const isVerticalRL = writingMode === 'vertical-rl';
+      const isVerticalLR = writingMode === 'vertical-lr';
 
       if (isVerticalRL || isVerticalLR) {
-        if (style.width === "wrap") {
+        if (style.width === 'wrap') {
           element.style.width = `${rect.width}px`;
           element.style.height = `${rect.height}px`;
           if (isVerticalRL) {
@@ -246,7 +246,7 @@ export function DecorationGroup(groupId, groupName) {
             element.style.left = `${rect.left + xOffset}px`;
           }
           element.style.top = `${rect.top + yOffset}px`;
-        } else if (style.width === "viewport") {
+        } else if (style.width === 'viewport') {
           element.style.width = `${rect.height}px`;
           element.style.height = `${viewportWidth}px`;
           const top = Math.floor(rect.top / viewportWidth) * viewportWidth;
@@ -257,7 +257,7 @@ export function DecorationGroup(groupId, groupName) {
             element.style.left = `${rect.left + xOffset}px`;
           }
           element.style.top = `${top + yOffset}px`;
-        } else if (style.width === "bounds") {
+        } else if (style.width === 'bounds') {
           element.style.width = `${boundingRect.height}px`;
           element.style.height = `${viewportWidth}px`;
           if (isVerticalRL) {
@@ -269,7 +269,7 @@ export function DecorationGroup(groupId, groupName) {
             element.style.left = `${boundingRect.left + xOffset}px`;
           }
           element.style.top = `${boundingRect.top + yOffset}px`;
-        } else if (style.width === "page") {
+        } else if (style.width === 'page') {
           element.style.width = `${rect.height}px`;
           element.style.height = `${pageSize}px`;
           const top = Math.floor(rect.top / pageSize) * pageSize;
@@ -284,23 +284,23 @@ export function DecorationGroup(groupId, groupName) {
           element.style.top = `${top + yOffset}px`;
         }
       } else {
-        if (style.width === "wrap") {
+        if (style.width === 'wrap') {
           element.style.width = `${rect.width}px`;
           element.style.height = `${rect.height}px`;
           element.style.left = `${rect.left + xOffset}px`;
           element.style.top = `${rect.top + yOffset}px`;
-        } else if (style.width === "viewport") {
+        } else if (style.width === 'viewport') {
           element.style.width = `${viewportWidth}px`;
           element.style.height = `${rect.height}px`;
           const left = Math.floor(rect.left / viewportWidth) * viewportWidth;
           element.style.left = `${left + xOffset}px`;
           element.style.top = `${rect.top + yOffset}px`;
-        } else if (style.width === "bounds") {
+        } else if (style.width === 'bounds') {
           element.style.width = `${boundingRect.width}px`;
           element.style.height = `${rect.height}px`;
           element.style.left = `${boundingRect.left + xOffset}px`;
           element.style.top = `${rect.top + yOffset}px`;
-        } else if (style.width === "page") {
+        } else if (style.width === 'page') {
           element.style.width = `${pageSize}px`;
           element.style.height = `${rect.height}px`;
           const left = Math.floor(rect.left / pageSize) * pageSize;
@@ -314,31 +314,31 @@ export function DecorationGroup(groupId, groupName) {
 
     let elementTemplate;
     try {
-      let template = document.createElement("template");
+      let template = document.createElement('template');
       template.innerHTML = item.decoration.element.trim();
       elementTemplate = template.content.firstElementChild;
     } catch (error) {
       logErrorMessage(
-        `Invalid decoration element "${item.decoration.element}": ${error.message}`
+        `Invalid decoration element "${item.decoration.element}": ${error.message}`,
       );
       return;
     }
 
-    if (style.layout === "boxes") {
+    if (style.layout === 'boxes') {
       const doNotMergeHorizontallyAlignedRects =
-        !documentWritingMode.startsWith("vertical");
+        !documentWritingMode.startsWith('vertical');
       const startElement = getContainingElement(item.range.startContainer);
       // Decorated text may have a different writingMode from document body
       const decoratorWritingMode = getComputedStyle(startElement).writingMode;
 
       const clientRects = getClientRectsNoOverlap(
         item.range,
-        doNotMergeHorizontallyAlignedRects
+        doNotMergeHorizontallyAlignedRects,
       ).sort((r1, r2) => {
         if (r1.top !== r2.top) return r1.top - r2.top;
-        if (decoratorWritingMode === "vertical-rl") {
+        if (decoratorWritingMode === 'vertical-rl') {
           return r2.left - r1.left;
-        } else if (decoratorWritingMode === "vertical-lr") {
+        } else if (decoratorWritingMode === 'vertical-lr') {
           return r1.left - r2.left;
         } else {
           return r1.left - r2.left;
@@ -347,14 +347,14 @@ export function DecorationGroup(groupId, groupName) {
 
       for (let clientRect of clientRects) {
         const line = elementTemplate.cloneNode(true);
-        line.style.pointerEvents = "none";
+        line.style.pointerEvents = 'none';
         line.dataset.writingMode = decoratorWritingMode;
         positionElement(line, clientRect, boundingRect, documentWritingMode);
         itemContainer.append(line);
       }
-    } else if (style.layout === "bounds") {
+    } else if (style.layout === 'bounds') {
       const bounds = elementTemplate.cloneNode(true);
-      bounds.style.pointerEvents = "none";
+      bounds.style.pointerEvents = 'none';
       bounds.dataset.writingMode = documentWritingMode;
       positionElement(bounds, boundingRect, boundingRect, documentWritingMode);
 
@@ -364,7 +364,7 @@ export function DecorationGroup(groupId, groupName) {
     groupContainer.append(itemContainer);
     item.container = itemContainer;
     item.clickableElements = Array.from(
-      itemContainer.querySelectorAll("[data-activable='1']")
+      itemContainer.querySelectorAll("[data-activable='1']"),
     );
     if (item.clickableElements.length === 0) {
       item.clickableElements = Array.from(itemContainer.children);
@@ -376,10 +376,10 @@ export function DecorationGroup(groupId, groupName) {
    */
   function requireContainer() {
     if (!container) {
-      container = document.createElement("div");
+      container = document.createElement('div');
       container.id = groupId;
       container.dataset.group = groupName;
-      container.style.pointerEvents = "none";
+      container.style.pointerEvents = 'none';
 
       requestAnimationFrame(function () {
         if (container != null) {
@@ -413,7 +413,7 @@ export function DecorationGroup(groupId, groupName) {
 }
 
 window.addEventListener(
-  "load",
+  'load',
   function () {
     // Will relayout all the decorations when the document body is resized.
     const body = document.body;
@@ -436,5 +436,5 @@ window.addEventListener(
     });
     observer.observe(body);
   },
-  false
+  false,
 );

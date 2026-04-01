@@ -4,24 +4,24 @@
 //  available in the top-level LICENSE file of the project.
 //
 
-import { findNearestInteractiveElement } from "./dom";
+import { findNearestInteractiveElement } from './dom';
 
-window.addEventListener("keydown", (event) => {
+window.addEventListener('keydown', event => {
   if (shouldIgnoreEvent(event)) {
     return;
   }
 
   preventDefault(event);
-  sendKeyEvent("down", event);
+  sendKeyEvent('down', event);
 });
 
-window.addEventListener("keyup", (event) => {
+window.addEventListener('keyup', event => {
   if (shouldIgnoreEvent(event)) {
     return;
   }
 
   preventDefault(event);
-  sendKeyEvent("up", event);
+  sendKeyEvent('up', event);
 });
 
 function shouldIgnoreEvent(event) {
