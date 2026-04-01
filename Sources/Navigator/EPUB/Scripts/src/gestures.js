@@ -10,12 +10,6 @@ import { findNearestInteractiveElement } from './dom';
 
 let isSelecting = false;
 
-// Track the last valid selection range so we can restore it when iOS
-// WKWebView glitches on finger release (focus jumps from a #text node
-// to a container element like div/body, selecting a huge chunk).
-let lastValidRange = null;
-let lastValidTextLen = 0;
-
 window.addEventListener('DOMContentLoaded', function () {
   document.addEventListener('click', onClick, false);
   document.addEventListener('pointerdown', onPointerDown, false);
@@ -24,56 +18,7 @@ window.addEventListener('DOMContentLoaded', function () {
   document.addEventListener('pointercancel', onPointerCancel, false);
 
   document.addEventListener('selectionchange', function () {
-    var sel = window.getSelection();
-    var collapsed = sel.isCollapsed;
-
-    // Detect and suppress selection spike: when releasing the finger,
-    // iOS WKWebView may snap the focus node to a container element
-    // (div/body), causing a huge text selection expansion to the full line.
-    // When this happens, restore the last valid range.
-    if (
-      isSelecting &&
-      !collapsed &&
-      sel.focusNode &&
-      sel.focusNode.nodeType !== Node.TEXT_NODE
-    ) {
-      var currentLen = sel.toString().length;
-      if (
-        lastValidRange &&
-        currentLen > lastValidTextLen * 3 &&
-        currentLen - lastValidTextLen > 200
-      ) {
-        try {
-          sel.removeAllRanges();
-          sel.addRange(lastValidRange.cloneRange());
-        } catch (e) {
-          // ignore restore failure
-        }
-        return;
-      }
-    }
-
-    // Save the current range as "last valid" when the focus is on a text node.
-    if (
-      !collapsed &&
-      sel.rangeCount > 0 &&
-      sel.focusNode &&
-      sel.focusNode.nodeType === Node.TEXT_NODE
-    ) {
-      try {
-        lastValidRange = sel.getRangeAt(0).cloneRange();
-        lastValidTextLen = sel.toString().length;
-      } catch (e) {
-        /* ignore */
-      }
-    }
-
-    if (collapsed) {
-      lastValidRange = null;
-      lastValidTextLen = 0;
-    }
-
-    isSelecting = !collapsed;
+    isSelecting = !window.getSelection().isCollapsed;
   });
 });
 
