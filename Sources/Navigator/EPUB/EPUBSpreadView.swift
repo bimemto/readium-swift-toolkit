@@ -574,7 +574,22 @@ extension EPUBSpreadView: WKNavigationDelegate {
     }
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        if isShowingErrorPage {
+            return
+        }
         setNeedsStopActivityIndicator()
+    }
+
+    func webView(_ webView: WKWebView, decidePolicyFor navigationResponse: WKNavigationResponse, decisionHandler: @escaping (WKNavigationResponsePolicy) -> Void) {
+        if let httpResponse = navigationResponse.response as? HTTPURLResponse,
+           httpResponse.statusCode >= 400,
+           navigationResponse.isForMainFrame
+        {
+            decisionHandler(.cancel)
+            loadContentUnavailablePage()
+            return
+        }
+        decisionHandler(.allow)
     }
 
     func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
