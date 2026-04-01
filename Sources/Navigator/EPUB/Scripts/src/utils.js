@@ -288,8 +288,6 @@ export function rangeFromLocator(locator) {
   try {
     let locations = locator.locations;
     let text = locator.text;
-    log("[rangeFromLocator] text.highlight=" + (text && text.highlight ? JSON.stringify(text.highlight.substring(0, 60)) : "MISSING") +
-        " cssSelector=" + (locations && locations.cssSelector ? locations.cssSelector : "none"));
     if (text && text.highlight) {
       var root;
       if (locations && locations.cssSelector) {
@@ -298,19 +296,15 @@ export function rangeFromLocator(locator) {
       if (!root) {
         root = document.body;
       }
-      log("[rangeFromLocator] root=" + root.tagName + " rootTextLen=" + (root.textContent || "").length);
 
       let anchor = new TextQuoteAnchor(root, text.highlight, {
         prefix: text.before,
         suffix: text.after,
       });
 
-      let range = anchor.toRange();
-      log("[rangeFromLocator] TextQuoteAnchor OK, rangeText=" + JSON.stringify(range.toString().substring(0, 60)));
-      return range;
+      return anchor.toRange();
     }
 
-    log("[rangeFromLocator] NO text.highlight, falling back to element range");
     if (locations) {
       var element = null;
 
@@ -328,7 +322,6 @@ export function rangeFromLocator(locator) {
       }
 
       if (element) {
-        log("[rangeFromLocator] FALLBACK: using full element " + element.tagName + " textLen=" + (element.textContent || "").length);
         let range = document.createRange();
         range.setStartBefore(element);
         range.setEndAfter(element);
@@ -336,7 +329,6 @@ export function rangeFromLocator(locator) {
       }
     }
   } catch (e) {
-    log("[rangeFromLocator] ERROR: " + e.message);
     logError(e);
   }
 

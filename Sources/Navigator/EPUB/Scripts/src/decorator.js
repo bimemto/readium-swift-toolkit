@@ -345,14 +345,6 @@ export function DecorationGroup(groupId, groupName) {
         }
       });
 
-      // Debug: log raw and processed rects
-      var rawRects = item.range.getClientRects();
-      log("[decorator] id=" + item.decoration.id + " rawRects=" + rawRects.length + " processedRects=" + clientRects.length + " rangeText=" + JSON.stringify(item.range.toString().substring(0, 40)));
-      for (var ri = 0; ri < clientRects.length; ri++) {
-        var r = clientRects[ri];
-        log("[decorator]   rect[" + ri + "] x=" + Math.round(r.left) + " y=" + Math.round(r.top) + " w=" + Math.round(r.width) + " h=" + Math.round(r.height));
-      }
-
       for (let clientRect of clientRects) {
         const line = elementTemplate.cloneNode(true);
         line.style.pointerEvents = 'none';
