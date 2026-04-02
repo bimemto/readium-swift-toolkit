@@ -577,22 +577,31 @@ extension EPUBSpreadView: WKNavigationDelegate {
         if isShowingErrorPage {
             return
         }
-        setNeedsStopActivityIndicator()
-    }
 
-    func webView(_ webView: WKWebView, decidePolicyFor navigationResponse: WKNavigationResponse, decisionHandler: @escaping (WKNavigationResponsePolicy) -> Void) {
-        if let httpResponse = navigationResponse.response as? HTTPURLResponse,
-           httpResponse.statusCode >= 400,
-           navigationResponse.isForMainFrame
-        {
-            decisionHandler(.cancel)
-            loadContentUnavailablePage()
-            return
+        // Detect full-page parser error: body is null or has only <parsererror> children.
+        // Partial errors (body has real content + some parsererror) are handled by CSS hiding.
+        let checkJS = """
+        (function(){
+            if (!document.body) return 'broken';
+            var children = document.body.children;
+            if (children.length === 0) return 'ok';
+            for (var i = 0; i < children.length; i++) {
+                if (children[i].tagName.toLowerCase() !== 'parsererror') return 'ok';
+            }
+            return 'broken';
+        })()
+        """
+        webView.evaluateJavaScript(checkJS) { [weak self] result, _ in
+            guard let self = self else { return }
+            if (result as? String) == "broken" {
+                self.loadContentUnavailablePage()
+            } else {
+                self.setNeedsStopActivityIndicator()
+            }
         }
-        decisionHandler(.allow)
     }
 
-    func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
+func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
         var policy: WKNavigationActionPolicy = .allow
 
         if navigationAction.navigationType == .linkActivated {
