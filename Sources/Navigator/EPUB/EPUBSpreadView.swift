@@ -555,12 +555,11 @@ extension EPUBSpreadView: WKNavigationDelegate {
             color:#3B2119;background:transparent;text-align:center;
         ">
             <div>
-                <p style="font-size:48px;margin:0;">📖</p>
-                <p style="font-size:1em;font-family:'Aleo',serif;">This page content is not available</p>
+                <p style="font-size:1.2em;font-family:'Aleo',serif;">This page content is not available</p>
             </div>
         </body></html>
         """
-        webView.loadHTMLString(html, baseURL: nil)
+        webView.load(Data(html.utf8), mimeType: "text/html", characterEncodingName: "UTF-8", baseURL: URL(string: "about:blank")!)
         setNeedsStopActivityIndicator()
     }
 
