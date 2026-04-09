@@ -1677,9 +1677,11 @@ extension EPUBNavigatorViewController {
         // Find which spread this locator belongs to
         guard let roIndex = readingOrder.firstIndexWithHREF(locator.href),
               let spreadIndex = spreads.firstIndexWithReadingOrderIndex(roIndex) else {
+            print("[renderPage] FAILED: no spread for href=\(locator.href.string)")
             return nil
         }
         let spread = spreads[spreadIndex]
+        print("[renderPage] locator pos=\(locator.locations.position ?? -1) href=\(locator.href.string) spreadIndex=\(spreadIndex) prog=\(locator.locations.progression ?? -1)")
 
         // Create a temporary spread view with the SAME viewModel.
         // init automatically calls loadSpread() which loads the chapter URL.
@@ -1689,6 +1691,11 @@ extension EPUBNavigatorViewController {
             scripts: [],
             animatedLoad: false
         )
+
+        // Inject the same user scripts as the main view (font, padding, image constraints, etc.)
+        // Without these, page breaks differ from the main WebView.
+        let userContentController = spreadView.webView.configuration.userContentController
+        delegate?.navigator(self, setupUserScripts: userContentController)
 
         // Frame must match the main view for identical page layout/breaks.
         let targetSize = view.bounds.size
@@ -1716,6 +1723,14 @@ extension EPUBNavigatorViewController {
 
         // Scroll to the exact position within the spread.
         await spreadView.go(to: .locator(locator))
+
+        // Log what scrollLeft the offscreen WebView ended up at
+        if let scrollLeft = try? await spreadView.webView.callAsyncJavaScript(
+            "return document.scrollingElement.scrollLeft",
+            arguments: [:], in: nil, in: .page
+        ) as? Double {
+            print("[renderPage] after go(): scrollLeft=\(scrollLeft) viewWidth=\(targetSize.width)")
+        }
 
         // Wait for rendering to settle (double requestAnimationFrame).
         await waitForOffscreenRender(spreadView.webView)
