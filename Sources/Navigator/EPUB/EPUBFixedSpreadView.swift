@@ -145,6 +145,10 @@ final class EPUBFixedSpreadView: EPUBSpreadView {
     override func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         super.webView(webView, didFinish: navigation)
 
+        // GOG: WebKit's smart double-tap zoom does nothing on the scaled FXL iframe and
+        // swallows the taps; the app handles double-tap zoom itself (FixedLayoutModeHandler).
+        webView.removeDoubleTapGestureRecognizer()
+
         if !isWrapperLoaded {
             isWrapperLoaded = true
             layoutSpread()
