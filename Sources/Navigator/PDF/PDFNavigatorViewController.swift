@@ -455,7 +455,10 @@ open class PDFNavigatorViewController:
         }
 
         if currentResourceIndex != index {
-            guard let document = PDFDocument(url: url.url) else {
+            // A local PDF opens from its file, which PDFKit memory-maps. Through the
+            // HTTP server PDFKit loads the whole body into RAM (iOS watchdog on big files).
+            let documentURL = publication.get(href)?.sourceURL?.fileURL?.url ?? url.url
+            guard let document = PDFDocument(url: documentURL) else {
                 log(.error, "Can't open PDF document at \(url)")
                 return false
             }
