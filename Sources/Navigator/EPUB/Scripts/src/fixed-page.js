@@ -43,13 +43,21 @@ export function FixedPage(iframeId, pageType) {
   // Viewport element containing the iFrame.
   var _viewport = _iframe.closest('.viewport');
 
-  // Parses the page size from the viewport meta tag of the loaded resource.
+  // Loads the page size of the loaded resource.
   function loadPageSize() {
-    var viewport = _iframe.contentWindow.document.querySelector(
-      'meta[name=viewport]',
-    );
+    var doc = _iframe.contentWindow.document;
+    var size = viewportSize(doc) || naturalSize(doc);
+    if (size) {
+      _pageSize = size;
+      layoutPage();
+    }
+  }
+
+  // Parses the page size from the viewport meta tag.
+  function viewportSize(doc) {
+    var viewport = doc.querySelector('meta[name=viewport]');
     if (!viewport) {
-      return;
+      return null;
     }
     var regex = /(\w+) *= *([^\s,]+)/g;
     var properties = {};
@@ -59,10 +67,24 @@ export function FixedPage(iframeId, pageType) {
     }
     var width = Number.parseFloat(properties.width);
     var height = Number.parseFloat(properties.height);
-    if (width && height) {
-      _pageSize = { width: width, height: height };
-      layoutPage();
+    return width && height ? { width: width, height: height } : null;
+  }
+
+  // GOG: a page without a usable viewport (none, `device-width`, or the spine
+  // item is an SVG or image file) used to stay 0x0, i.e. blank. Fall back to
+  // the size of its content.
+  function naturalSize(doc) {
+    var root = doc.documentElement;
+    var svg = root && root.localName === 'svg' ? root : null;
+    var img = svg ? null : doc.querySelector('img');
+    if (img && img.naturalWidth && img.naturalHeight) {
+      return { width: img.naturalWidth, height: img.naturalHeight };
     }
+    svg = svg || doc.querySelector('svg');
+    var box = svg && svg.viewBox && svg.viewBox.baseVal;
+    return box && box.width && box.height
+      ? { width: box.width, height: box.height }
+      : null;
   }
 
   // Layouts the page iframe and scale it according to the current fit mode.
@@ -158,9 +180,13 @@ export function FixedPage(iframeId, pageType) {
         // issues in some FXL EPUBs with spreads.
         setTimeout(function () {
           page.isLoading = false;
-          _iframe.contentWindow.eval(
-            `readium.link = ${JSON.stringify(resource.link)};`,
-          );
+          // GOG: an SVG or image page has no `readium` object; the spread must
+          // still report loaded or the navigator waits forever.
+          try {
+            _iframe.contentWindow.eval(
+              `readium.link = ${JSON.stringify(resource.link)};`,
+            );
+          } catch (e) {}
           if (completion) {
             completion();
           }

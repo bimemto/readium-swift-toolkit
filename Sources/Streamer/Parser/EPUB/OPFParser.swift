@@ -251,9 +251,9 @@ final class OPFParser: Loggable {
             case "remote-resources":
                 contains.append("remote-resources")
             // Page
-            case "page-spread-left":
+            case "page-spread-left", "rendition:page-spread-left":
                 page = .left
-            case "page-spread-right":
+            case "page-spread-right", "rendition:page-spread-right":
                 page = .right
             case "page-spread-center", "rendition:page-spread-center":
                 page = .center

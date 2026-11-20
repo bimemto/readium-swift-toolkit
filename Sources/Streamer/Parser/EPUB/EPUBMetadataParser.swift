@@ -114,8 +114,10 @@ final class EPUBMetadataParser: Loggable {
 
         let layoutMetadata = metas["layout", in: .rendition].last?.content ?? ""
 
-        return Layout(epub: layoutMetadata)
-            ?? ((displayOption("fixed-layout") == "true") ? .fixed : .reflowable)
+        // GOG: the Kindle `fixed-layout` meta (kindlegen, Kindle Comic Converter) counts too.
+        let isFixed = displayOption("fixed-layout") == "true"
+            || metas["fixed-layout"].last?.content == "true"
+        return Layout(epub: layoutMetadata) ?? (isFixed ? .fixed : .reflowable)
     }
 
     /// Finds all the `<dc:title> element matching the given `title-type`.
